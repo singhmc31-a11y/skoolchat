@@ -172,7 +172,9 @@ const {data} = await supabase
 
 messagesDiv.innerHTML=""
 
-data.forEach(addMessage)
+if(data){
+  data.forEach(addMessage)
+}
 
 }
 
