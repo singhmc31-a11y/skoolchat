@@ -2,106 +2,140 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp-style Chat with Settings</title>
 
 <style>
-
 body{
-font-family:sans-serif;
-margin:0;
-background:#ece5dd;
-display:flex;
-flex-direction:column;
-height:100vh;
+  margin:0;
+  font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+  background:#ece5dd;
 }
 
 header{
-background:#075e54;
-color:white;
-padding:12px;
-display:flex;
-align-items:center;
-gap:10px;
+  background:#075e54;
+  color:white;
+  display:flex;
+  align-items:center;
+  padding:10px;
+  gap:10px;
+  justify-content:space-between;
 }
 
 header img{
-width:36px;
-height:36px;
-border-radius:50%;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+}
+
+#roomName{
+  flex:1;
+}
+
+#settingsBtn{
+  cursor:pointer;
+  background:#25d366;
+  border:none;
+  border-radius:50%;
+  width:30px;
+  height:30px;
+  font-weight:bold;
+  color:white;
+}
+
+#settingsPanel{
+  display:none;
+  flex-direction:column;
+  padding:10px;
+  background:#f0f0f0;
+  gap:8px;
+}
+
+#settingsPanel input{
+  padding:6px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+#settingsPanel button{
+  padding:6px;
+  border-radius:6px;
+  border:none;
+  background:#25d366;
+  color:white;
+  cursor:pointer;
 }
 
 #messages{
-flex:1;
-overflow-y:auto;
-padding:10px;
-display:flex;
-flex-direction:column;
-gap:8px;
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
 
 .msg{
-max-width:70%;
-padding:8px 12px;
-border-radius:10px;
-display:flex;
-gap:8px;
-align-items:flex-end;
+  max-width:70%;
+  padding:8px 12px;
+  border-radius:10px;
+  display:flex;
+  flex-direction:column;
+  word-break:break-word;
 }
 
-.msg img{
-width:30px;
-height:30px;
-border-radius:50%;
-}
-
-.me{
-align-self:flex-end;
-background:#dcf8c6;
-}
-
-.other{
-align-self:flex-start;
-background:white;
-}
+.me{align-self:flex-end;background:#dcf8c6;}
+.other{align-self:flex-start;background:white;}
+.msg b{font-size:12px;}
+.meta{font-size:10px; opacity:0.6;text-align:right;}
 
 #inputArea{
-display:flex;
-padding:10px;
-background:#f0f0f0;
-gap:8px;
+  display:flex;
+  gap:8px;
+  padding:10px;
+  background:#f0f0f0;
 }
 
 #msgInput{
-flex:1;
-padding:10px;
-border-radius:20px;
-border:none;
+  flex:1;
+  border-radius:20px;
+  border:none;
+  padding:10px;
 }
 
 #sendBtn{
-background:#25d366;
-border:none;
-color:white;
-font-size:16px;
-border-radius:50%;
-width:40px;
-height:40px;
-cursor:pointer;
-transition:0.2s;
+  background:#25d366;
+  color:white;
+  border:none;
+  border-radius:50%;
+  width:40px;
+  height:40px;
+  font-size:16px;
+  cursor:pointer;
+  transition:0.2s;
 }
 
-#sendBtn:active{
-transform:scale(0.8);
-}
-
+#sendBtn:active{transform:scale(0.8);}
 </style>
 </head>
 
 <body>
 
 <header>
-<img id="myAvatar">
+<img id="avatar">
 <div id="roomName"></div>
+<button id="settingsBtn">⚙️</button>
 </header>
+
+<div id="settingsPanel">
+<input id="usernameInput" placeholder="Username">
+<input id="roomInput" placeholder="Room">
+<input id="avatarInput" placeholder="Profile picture URL">
+<input id="bgInput" placeholder="Background color (#hex or name)">
+<button id="saveSettingsBtn">Save</button>
+</div>
 
 <div id="messages"></div>
 
@@ -111,111 +145,100 @@ transform:scale(0.8);
 </div>
 
 <script type="module">
-
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 const supabase = createClient(
-'https://wriwchqhwjvujmkpyzai.supabase.co',
-'sb_publishable_t5CJXeZxFY1gtCPu_PH7nQ_9lnlg9AT'
+  'https://wriwchqhwjvujmkpyzai.supabase.co',
+  'sb_publishable_t5CJXeZxFY1gtCPu_PH7nQ_9lnlg9AT'
 )
 
-let username = localStorage.getItem("username")
-let room = localStorage.getItem("room")
-let avatar = localStorage.getItem("avatar")
+// --- User settings ---
+function loadSettings(){
+  username = localStorage.getItem("username") || prompt("Username")
+  room = localStorage.getItem("room") || prompt("Room name")
+  avatar = localStorage.getItem("avatar") || prompt("Profile picture URL")
+  bg = localStorage.getItem("bg") || "#ece5dd"
 
-if(!username){
-username = prompt("Username")
-localStorage.setItem("username",username)
+  localStorage.setItem("username",username)
+  localStorage.setItem("room",room)
+  localStorage.setItem("avatar",avatar)
+  localStorage.setItem("bg",bg)
+
+  document.getElementById("avatar").src = avatar || "https://i.imgur.com/HeIi0wU.png"
+  document.getElementById("roomName").innerText = room
+  document.body.style.background = bg
+
+  // Pre-fill settings inputs
+  document.getElementById("usernameInput").value = username
+  document.getElementById("roomInput").value = room
+  document.getElementById("avatarInput").value = avatar
+  document.getElementById("bgInput").value = bg
 }
 
-if(!room){
-room = prompt("Room name")
-localStorage.setItem("room",room)
+loadSettings()
+
+// --- Toggle settings panel ---
+const settingsBtn = document.getElementById("settingsBtn")
+const settingsPanel = document.getElementById("settingsPanel")
+settingsBtn.onclick = ()=>settingsPanel.style.display = settingsPanel.style.display==="flex"?"none":"flex"
+
+// --- Save settings ---
+document.getElementById("saveSettingsBtn").onclick = ()=>{
+  username = document.getElementById("usernameInput").value.trim() || username
+  room = document.getElementById("roomInput").value.trim() || room
+  avatar = document.getElementById("avatarInput").value.trim() || avatar
+  bg = document.getElementById("bgInput").value.trim() || bg
+
+  localStorage.setItem("username",username)
+  localStorage.setItem("room",room)
+  localStorage.setItem("avatar",avatar)
+  localStorage.setItem("bg",bg)
+
+  document.getElementById("avatar").src = avatar || "https://i.imgur.com/HeIi0wU.png"
+  document.getElementById("roomName").innerText = room
+  document.body.style.background = bg
+
+  loadMessages()
 }
 
-if(!avatar){
-avatar = prompt("Profile picture URL (optional)")
-localStorage.setItem("avatar",avatar)
-}
-
-document.getElementById("roomName").innerText = room
-document.getElementById("myAvatar").src = avatar || "https://i.imgur.com/HeIi0wU.png"
-
+// --- Chat functionality ---
 const messagesDiv = document.getElementById("messages")
 
 function addMessage(msg){
-
-const div = document.createElement("div")
-
-div.className = "msg " + (msg.username===username ? "me":"other")
-
-div.innerHTML = `
-<img src="${msg.avatar_url || 'https://i.imgur.com/HeIi0wU.png'}">
-<div>
-<b>${msg.username}</b><br>
-${msg.message}
-</div>
-`
-
-messagesDiv.appendChild(div)
-messagesDiv.scrollTop = messagesDiv.scrollHeight
-
+  const div = document.createElement("div")
+  div.className = "msg "+(msg.username===username?"me":"other")
+  div.innerHTML = `<b>${msg.username}</b><div>${msg.message}</div><div class="meta">${new Date(msg.created_at).toLocaleTimeString()}</div>`
+  messagesDiv.appendChild(div)
+  messagesDiv.scrollTop = messagesDiv.scrollHeight
 }
 
 async function loadMessages(){
-
-const {data} = await supabase
-.from("messages")
-.select("*")
-.eq("room",room)
-.order("created_at",{ascending:true})
-
-messagesDiv.innerHTML=""
-
-if(data){
-  data.forEach(addMessage)
-}
-
+  const {data,error} = await supabase.from("messages")
+    .select("*").eq("room",room).order("created_at",{ascending:true})
+  if(data) messagesDiv.innerHTML="",data.forEach(addMessage)
+  if(error) console.error(error)
 }
 
 async function sendMessage(){
-
-const text = document.getElementById("msgInput").value.trim()
-
-if(!text) return
-
-document.getElementById("msgInput").value=""
-
-await supabase.from("messages").insert({
-username:username,
-room:room,
-message:text,
-avatar_url:avatar
-})
-
+  const text = document.getElementById("msgInput").value.trim()
+  if(!text) return
+  document.getElementById("msgInput").value = ""
+  const {error} = await supabase.from("messages").insert({
+    username, room, message:text, avatar_url:avatar
+  })
+  if(error) console.error(error)
 }
 
-document.getElementById("sendBtn").onclick=sendMessage
+document.getElementById("sendBtn").onclick = sendMessage
+document.getElementById("msgInput").addEventListener("keypress", e=>{if(e.key==="Enter") sendMessage()})
 
-document.getElementById("msgInput").addEventListener("keypress",e=>{
-if(e.key==="Enter") sendMessage()
-})
-
+// --- Realtime ---
 loadMessages()
-
 supabase.channel("realtime")
-.on(
-"postgres_changes",
-{event:"INSERT",schema:"public",table:"messages"},
-payload=>{
-if(payload.new.room===room){
-addMessage(payload.new)
-}
-}
-)
-.subscribe()
+  .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},payload=>{
+    if(payload.new.room===room) addMessage(payload.new)
+  }).subscribe()
 
 </script>
-
 </body>
 </html>
