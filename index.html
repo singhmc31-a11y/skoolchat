@@ -2,10 +2,9 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WhatsApp-style Chat with Settings</title>
-
+<title>skoolchat</title>
 <style>
-body{
+body {
   margin:0;
   font-family:sans-serif;
   display:flex;
@@ -13,7 +12,6 @@ body{
   height:100vh;
   background:#ece5dd;
 }
-
 header{
   background:#075e54;
   color:white;
@@ -23,17 +21,12 @@ header{
   gap:10px;
   justify-content:space-between;
 }
-
 header img{
   width:36px;
   height:36px;
   border-radius:50%;
 }
-
-#roomName{
-  flex:1;
-}
-
+#roomName{flex:1;}
 #settingsBtn{
   cursor:pointer;
   background:#25d366;
@@ -44,7 +37,6 @@ header img{
   font-weight:bold;
   color:white;
 }
-
 #settingsPanel{
   display:none;
   flex-direction:column;
@@ -52,13 +44,11 @@ header img{
   background:#f0f0f0;
   gap:8px;
 }
-
 #settingsPanel input{
   padding:6px;
   border-radius:6px;
   border:1px solid #ccc;
 }
-
 #settingsPanel button{
   padding:6px;
   border-radius:6px;
@@ -67,7 +57,6 @@ header img{
   color:white;
   cursor:pointer;
 }
-
 #messages{
   flex:1;
   overflow-y:auto;
@@ -76,35 +65,40 @@ header img{
   flex-direction:column;
   gap:8px;
 }
-
 .msg{
   max-width:70%;
   padding:8px 12px;
   border-radius:10px;
   display:flex;
-  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
   word-break:break-word;
 }
-
 .me{align-self:flex-end;background:#dcf8c6;}
 .other{align-self:flex-start;background:white;}
+.msg img{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+}
+.msg-content{
+  display:flex;
+  flex-direction:column;
+}
 .msg b{font-size:12px;}
-.meta{font-size:10px; opacity:0.6;text-align:right;}
-
+.meta{font-size:10px; opacity:0.6; text-align:right;}
 #inputArea{
   display:flex;
   gap:8px;
   padding:10px;
   background:#f0f0f0;
 }
-
 #msgInput{
   flex:1;
   border-radius:20px;
   border:none;
   padding:10px;
 }
-
 #sendBtn{
   background:#25d366;
   color:white;
@@ -116,11 +110,9 @@ header img{
   cursor:pointer;
   transition:0.2s;
 }
-
 #sendBtn:active{transform:scale(0.8);}
 </style>
 </head>
-
 <body>
 
 <header>
@@ -134,7 +126,7 @@ header img{
 <input id="roomInput" placeholder="Room">
 <input id="avatarInput" placeholder="Profile picture URL">
 <input id="bgInput" placeholder="Background color (#hex or name)">
-<button id="saveSettingsBtn">Save</button>
+<button id="saveSettingsBtn">Save Settings</button>
 </div>
 
 <div id="messages"></div>
@@ -147,16 +139,19 @@ header img{
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-const supabase = createClient(
-  'https://wriwchqhwjvujmkpyzai.supabase.co',
-  'sb_publishable_t5CJXeZxFY1gtCPu_PH7nQ_9lnlg9AT'
-)
+// --- Supabase client ---
+const supabaseUrl = 'https://wriwchqhwjvujmkpyzai.supabase.co'
+const supabaseKey = 'sb_publishable_t5CJXeZxFY1gtCPu_PH7nQ_9lnlg9AT'
+const supabase = createClient(supabaseUrl, supabaseKey)
 
-// --- User settings ---
+// --- Declare global variables ---
+let username, room, avatar, bg
+
+// --- Load settings ---
 function loadSettings(){
-  username = localStorage.getItem("username") || prompt("Username")
-  room = localStorage.getItem("room") || prompt("Room name")
-  avatar = localStorage.getItem("avatar") || prompt("Profile picture URL")
+  username = localStorage.getItem("username") || prompt("Enter your username")
+  room = localStorage.getItem("room") || prompt("Enter room name")
+  avatar = localStorage.getItem("avatar") || prompt("Profile picture URL (optional)")
   bg = localStorage.getItem("bg") || "#ece5dd"
 
   localStorage.setItem("username",username)
@@ -168,19 +163,17 @@ function loadSettings(){
   document.getElementById("roomName").innerText = room
   document.body.style.background = bg
 
-  // Pre-fill settings inputs
   document.getElementById("usernameInput").value = username
   document.getElementById("roomInput").value = room
   document.getElementById("avatarInput").value = avatar
   document.getElementById("bgInput").value = bg
 }
-
 loadSettings()
 
-// --- Toggle settings panel ---
+// --- Settings toggle ---
 const settingsBtn = document.getElementById("settingsBtn")
 const settingsPanel = document.getElementById("settingsPanel")
-settingsBtn.onclick = ()=>settingsPanel.style.display = settingsPanel.style.display==="flex"?"none":"flex"
+settingsBtn.onclick = () => settingsPanel.style.display = settingsPanel.style.display==="flex"?"none":"flex"
 
 // --- Save settings ---
 document.getElementById("saveSettingsBtn").onclick = ()=>{
@@ -198,46 +191,64 @@ document.getElementById("saveSettingsBtn").onclick = ()=>{
   document.getElementById("roomName").innerText = room
   document.body.style.background = bg
 
+  messagesDiv.innerHTML=""
   loadMessages()
 }
 
-// --- Chat functionality ---
+// --- DOM references ---
 const messagesDiv = document.getElementById("messages")
 
 function addMessage(msg){
   const div = document.createElement("div")
   div.className = "msg "+(msg.username===username?"me":"other")
-  div.innerHTML = `<b>${msg.username}</b><div>${msg.message}</div><div class="meta">${new Date(msg.created_at).toLocaleTimeString()}</div>`
+  div.innerHTML = `<img src="${msg.avatar_url||'https://i.imgur.com/HeIi0wU.png'}">
+                   <div class="msg-content">
+                     <b>${msg.username}</b>
+                     <div>${msg.message}</div>
+                     <div class="meta">${new Date(msg.created_at).toLocaleTimeString()}</div>
+                   </div>`
   messagesDiv.appendChild(div)
   messagesDiv.scrollTop = messagesDiv.scrollHeight
 }
 
+// --- Load messages from Supabase ---
 async function loadMessages(){
-  const {data,error} = await supabase.from("messages")
-    .select("*").eq("room",room).order("created_at",{ascending:true})
-  if(data) messagesDiv.innerHTML="",data.forEach(addMessage)
-  if(error) console.error(error)
+  try{
+    const {data,error} = await supabase.from("messages")
+      .select("*")
+      .eq("room",room)
+      .order("created_at",{ascending:true})
+    if(error) throw error
+    if(data) messagesDiv.innerHTML="", data.forEach(addMessage)
+  }catch(err){console.error("Load failed:",err)}
 }
 
+// --- Send message ---
 async function sendMessage(){
   const text = document.getElementById("msgInput").value.trim()
   if(!text) return
-  document.getElementById("msgInput").value = ""
-  const {error} = await supabase.from("messages").insert({
-    username, room, message:text, avatar_url:avatar
-  })
-  if(error) console.error(error)
+  document.getElementById("msgInput").value=""
+  try{
+    const {error} = await supabase.from("messages").insert({
+      username, room, message:text, avatar_url:avatar
+    })
+    if(error) throw error
+  }catch(err){console.error("Send failed:",err)}
 }
 
+// --- Events ---
 document.getElementById("sendBtn").onclick = sendMessage
-document.getElementById("msgInput").addEventListener("keypress", e=>{if(e.key==="Enter") sendMessage()})
+document.getElementById("msgInput").addEventListener("keypress", e=>{
+  if(e.key==="Enter") sendMessage()
+})
 
-// --- Realtime ---
+// --- Realtime subscription ---
 loadMessages()
 supabase.channel("realtime")
   .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},payload=>{
     if(payload.new.room===room) addMessage(payload.new)
-  }).subscribe()
+  })
+  .subscribe()
 
 </script>
 </body>
