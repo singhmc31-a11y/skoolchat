@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>SkoolChat — full</title>
+<title>SkoolChat — Fixed</title>
 <style>
 :root{
   --bg:#ece5dd;
@@ -56,8 +56,7 @@ body{
 .msg.me{background:var(--msgme);margin-left:auto}
 .msg.other{background:var(--msgother)}
 .msg .meta{font-size:11px;color:#444;margin-top:6px;opacity:.7;text-align:right}
-.msg .controls{margin-top:6px;display:flex;gap:6px;font-size:13px}
-.small{font-size:12px;color:rgba(255,255,255,0.8)}
+.controls{margin-top:6px;display:flex;gap:6px;font-size:13px}
 
 /* input */
 #inputBar{display:flex;gap:8px;padding:12px;background:#f3f3f3;align-items:center}
@@ -72,10 +71,8 @@ body{
 /* online */
 #online{padding:8px;background:#202c33;border-radius:8px;color:#fff;margin-top:8px;max-height:140px;overflow:auto}
 
-/* responsiveness */
-@media(max-width:880px){
-  #sidebar{width:220px}
-}
+/* responsive */
+@media(max-width:880px){ #sidebar{width:220px} }
 </style>
 </head>
 <body>
@@ -94,6 +91,7 @@ body{
   </div>
 
   <div id="rooms"></div>
+
   <div style="display:flex;gap:8px">
     <button id="newRoomBtn" style="flex:1;padding:8px;border-radius:8px;background:#2b3940;color:#fff;border:none;cursor:pointer">+ New Room</button>
     <button id="joinGeneralBtn" title="Go to General" style="padding:8px;border-radius:8px;background:#25d366;color:#fff;border:none;cursor:pointer">G</button>
@@ -106,9 +104,7 @@ body{
 <div id="main">
   <div id="chatHeader">
     <div id="roomTitle">No room</div>
-    <div id="headerRight">
-      <span id="typingIndicator" style="opacity:.8;font-size:13px"></span>
-    </div>
+    <div id="headerRight"><span id="typingIndicator" style="opacity:.8;font-size:13px"></span></div>
   </div>
 
   <div id="messages"></div>
@@ -137,20 +133,18 @@ body{
 </div>
 
 <script type="module">
-/* ------------- CONFIG (your project) ------------- */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
 
+// ---------------- CONFIG (your Supabase project) ----------------
 const SUPABASE_URL = "https://rlznpgcdfcsffrwkgniu.supabase.co"
 const SUPABASE_KEY = "sb_publishable_5DTkj5jJBVeD02GIP2LCxw_EPQKDG7v"
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
-/* ------------------------------------------------- */
+// ----------------------------------------------------------------
 
-/* GLOBAL STATE */
+/* STATE */
 let username = localStorage.getItem('username') || null
 let avatarURL = localStorage.getItem('avatarURL') || ''
 let currentRoom = null
-let typingTimeout = null
 
 /* DOM refs */
 const roomsEl = document.getElementById('rooms')
@@ -161,64 +155,60 @@ const roomTitle = document.getElementById('roomTitle')
 const typingIndicator = document.getElementById('typingIndicator')
 const onlineList = document.getElementById('onlineList')
 
-/* helper: safe console/log UI */
-function logErr(e){ console.error(e); }
+/* small helpers */
+function logErr(e){ console.error(e) }
+function toast(t){ console.log('TOAST:',t) }
+function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
 
-/* Prompt for username if none */
+/* ask for username once */
 if(!username){
-  username = prompt("Pick a display name (no signup required):") || ("user-"+Math.floor(Math.random()*1000))
+  username = prompt("Pick a display name (no signup):") || ("user"+Math.floor(Math.random()*1000))
   localStorage.setItem('username', username)
 }
 usernameLabel.innerText = username
 document.getElementById('nameInput').value = username
 profilePic.src = avatarURL || profilePic.src
 
-/* Utility: show small ui toast (console fallback) */
-function toast(msg){ console.log("TOAST:",msg) }
-
-/* ---------- ROOMS ---------- */
+/* ensure General room exists */
 async function ensureGeneral(){
   try{
-    const { data } = await supabase.from('rooms').select('id,name').eq('name','General').limit(1)
+    const { data } = await supabase.from('rooms').select('id').eq('name','General').limit(1)
     if(!data || data.length===0){
-      await supabase.from('rooms').insert({name:'General'})
+      await supabase.from('rooms').insert({ name: 'General' })
     }
   }catch(e){ logErr(e) }
 }
 
+/* load rooms */
 async function loadRooms(){
   try{
     const { data, error } = await supabase.from('rooms').select('id,name').order('created_at',{ascending:true})
     if(error) return logErr(error)
     roomsEl.innerHTML = ''
     if(!data || data.length===0){
-      // create default room fallback
-      await supabase.from('rooms').insert({name:'General'})
+      await supabase.from('rooms').insert({ name: 'General' })
       return loadRooms()
     }
-    data.forEach(r=>{
+    for(const r of data){
       const div = document.createElement('div')
-      div.className='room'
+      div.className = 'room'
       div.dataset.id = r.id
-      div.innerHTML = `<img src="https://i.imgur.com/HeIi0wU.png"><div style="flex:1">${r.name}</div>`
-      div.onclick = ()=>selectRoom(r.id,r.name)
+      div.innerHTML = `<img src="https://i.imgur.com/HeIi0wU.png"><div style="flex:1">${escapeHtml(r.name)}</div>`
+      div.onclick = ()=>selectRoom(r.id, r.name)
       roomsEl.appendChild(div)
-    })
-    // pick first room if none selected
-    if(!currentRoom && data.length>0){
-      selectRoom(data[0].id, data[0].name)
     }
+    if(!currentRoom && data.length>0) selectRoom(data[0].id, data[0].name)
   }catch(e){ logErr(e) }
 }
 
-/* ---------- SELECT ROOM & LOAD MESSAGES ---------- */
+/* select room */
 async function selectRoom(id,name){
   currentRoom = id
   roomTitle.innerText = name
   await loadMessages()
-  // update messages view
 }
 
+/* load messages for room */
 async function loadMessages(){
   if(!currentRoom) return
   try{
@@ -228,77 +218,75 @@ async function loadMessages(){
       .eq('room_id', currentRoom)
       .order('created_at',{ascending:true})
     if(error) return logErr(error)
-    messagesEl.innerHTML=''
+    messagesEl.innerHTML = ''
     if(!data) return
-    data.forEach(renderMessage)
+    data.forEach(m=>{
+      insertMessageDOM(m)
+    })
   }catch(e){ logErr(e) }
 }
 
-/* ---------- RENDER MESSAGE ---------- */
-function renderMessage(m){
-  // avoid duplicates (if realtime triggers)
+/* insert message DOM (prevents duplicates) */
+function insertMessageDOM(m){
+  if(!m || !m.id) return
   if(document.querySelector(`[data-id="${m.id}"]`)) return
-  const row = document.createElement('div'); row.className='msgRow'
+  const row = document.createElement('div')
+  row.className = 'msgRow'
   row.dataset.id = m.id
   const isMe = (m.username === username)
-  const msgWrap = document.createElement('div'); msgWrap.className = 'msg '+(isMe?'me':'other')
-  // header: name + avatar if not me, else only text
+  const msgWrap = document.createElement('div')
+  msgWrap.className = 'msg ' + (isMe ? 'me' : 'other')
+  // header & body
   const avatar = m.avatar_url || 'https://i.imgur.com/HeIi0wU.png'
-  const header = `<div style="font-weight:700">${m.username}</div>`
+  const header = `<div style="font-weight:700">${escapeHtml(m.username)}</div>`
   const body = m.message ? `<div>${escapeHtml(m.message)}</div>` : ''
   const imgHtml = m.image_url ? `<div style="margin-top:6px"><img src="${m.image_url}" style="max-width:220px;border-radius:8px"></div>` : ''
   const audioHtml = m.audio_url ? `<div style="margin-top:6px"><audio controls src="${m.audio_url}"></audio></div>` : ''
   const meta = `<div class="meta">${new Date(m.created_at).toLocaleString()}${m.edited? ' • edited':''}</div>`
   msgWrap.innerHTML = header + body + imgHtml + audioHtml + meta
-  // controls: reply, react, edit, delete (only for me)
-  const controls = document.createElement('div'); controls.className='controls'
+  // controls
+  const ctr = document.createElement('div'); ctr.className='controls'
   const replyBtn = document.createElement('button'); replyBtn.textContent='↩'; replyBtn.title='Reply'
   replyBtn.onclick = ()=>replyToMessage(m)
   const reactBtn = document.createElement('button'); reactBtn.textContent='😊'; reactBtn.title='React'
   reactBtn.onclick = ()=>reactToMessage(m)
-  controls.appendChild(replyBtn); controls.appendChild(reactBtn)
+  ctr.appendChild(replyBtn); ctr.appendChild(reactBtn)
   if(isMe){
     const editBtn = document.createElement('button'); editBtn.textContent='✏️'; editBtn.title='Edit'
     const delBtn = document.createElement('button'); delBtn.textContent='🗑'; delBtn.title='Delete'
     editBtn.onclick = ()=>editMessage(m)
     delBtn.onclick = ()=>deleteMessage(m)
-    controls.appendChild(editBtn); controls.appendChild(delBtn)
+    ctr.appendChild(editBtn); ctr.appendChild(delBtn)
   }
-  msgWrap.appendChild(controls)
-  // layout: avatar + message (avatar left for others, right for me)
+  msgWrap.appendChild(ctr)
   const avatarEl = document.createElement('img'); avatarEl.src = avatar; avatarEl.style.width='34px'; avatarEl.style.height='34px'; avatarEl.style.borderRadius='50%'
   if(isMe){
     row.appendChild(msgWrap)
-    // optionally show small avatar at end
   } else {
     row.appendChild(avatarEl)
     row.appendChild(msgWrap)
   }
-  row.dataset.id = m.id
+  row.setAttribute('data-id', m.id)
   messagesEl.appendChild(row)
   messagesEl.scrollTop = messagesEl.scrollHeight
 }
 
-/* ---------- ESCAPE HTML ---------- */
-function escapeHtml(str){ if(!str) return ''; return String(str).replace(/[&<>"']/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]}) }
-
-/* ---------- CRUD: send/edit/delete ---------- */
+/* send message (with optional file upload) */
 async function sendMessage(){
   const box = document.getElementById('msgBox')
   const fileInput = document.getElementById('fileInput')
   const text = box.value.trim()
   let image_url = null, audio_url = null
 
-  // handle file if chosen
   if(fileInput.files && fileInput.files.length>0){
     const file = fileInput.files[0]
-    const ext = file.type.startsWith('image') ? 'images' : 'voice'
-    const path = `${ext}/${crypto.randomUUID()}_${file.name}`
+    const bucket = file.type.startsWith('image') ? 'images' : 'voice'
+    const path = `${bucket}/${crypto.randomUUID()}_${file.name}`
     try{
-      const { data, error } = await supabase.storage.from(ext).upload(path, file)
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {upsert:true})
       if(error) throw error
-      const pub = supabase.storage.from(ext).getPublicUrl(path).publicUrl
-      if(ext==='images') image_url = pub
+      const pub = supabase.storage.from(bucket).getPublicUrl(path).publicUrl
+      if(bucket==='images') image_url = pub
       else audio_url = pub
     }catch(e){ logErr(e); toast('Upload failed') }
     fileInput.value = ''
@@ -318,15 +306,15 @@ async function sendMessage(){
     const { error } = await supabase.from('messages').insert(payload)
     if(error) throw error
     box.value = ''
-    // will render via realtime
   }catch(e){ logErr(e); toast('Send failed') }
 }
 
+/* edit/delete */
 async function editMessage(m){
   const newText = prompt('Edit message', m.message || '')
-  if(newText===null) return
+  if(newText === null) return
   try{
-    const { error } = await supabase.from('messages').update({message:newText, edited:true}).eq('id', m.id)
+    const { error } = await supabase.from('messages').update({ message: newText, edited: true }).eq('id', m.id)
     if(error) throw error
   }catch(e){ logErr(e); toast('Edit failed') }
 }
@@ -336,62 +324,62 @@ async function deleteMessage(m){
   try{
     const { error } = await supabase.from('messages').delete().eq('id', m.id)
     if(error) throw error
-    // remove from DOM
     const el = document.querySelector(`[data-id="${m.id}"]`)
     if(el) el.remove()
   }catch(e){ logErr(e); toast('Delete failed') }
 }
 
-/* ---------- reactions & reply ---------- */
+/* reactions & reply */
 async function reactToMessage(m){
-  const emoji = prompt('React with emoji (e.g. 👍,😂,❤️)')
+  const emoji = prompt('React with emoji (e.g. 👍, 😂, ❤️)')
   if(!emoji) return
-  try{
-    await supabase.from('reactions').insert({message_id:m.id, username, emoji})
-  }catch(e){ logErr(e) }
+  try{ await supabase.from('reactions').insert({ message_id: m.id, username, emoji }) } catch(e){ logErr(e) }
 }
-
-async function replyToMessage(m){
+function replyToMessage(m){
   const box = document.getElementById('msgBox')
-  box.value = `Reply to ${m.username}: `
+  box.value = `@${m.username} ` + (m.message ? `“${m.message.substring(0,60)}” ` : '')
   box.focus()
 }
 
-/* ---------- realtime subscription ---------- */
+/* typing (simple broadcast) */
+const typingChannel = supabase.channel('typing-channel')
+typingChannel.on('broadcast', { event: 'user_typing' }, payload=>{
+  if(payload.payload.room === currentRoom && payload.payload.username !== username){
+    typingIndicator.innerText = `${payload.payload.username} is typing...`
+    clearTimeout(typingTimeout)
+    typingTimeout = setTimeout(()=> typingIndicator.innerText = '', 1400)
+  }
+}).subscribe()
+
+document.getElementById('msgBox').addEventListener('input', ()=> {
+  typingChannel.send({ type: 'broadcast', event: 'user_typing', payload: { username, room: currentRoom } })
+})
+
+/* realtime subscription */
 function subscribeRealtime(){
-  // channel name unique so we don't get duplicate listeners
   const ch = supabase.channel('realtime-messages')
-  ch.on('postgres_changes', { event:'INSERT', schema:'public', table:'messages'}, payload=>{
+  ch.on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload=>{
     const row = payload.new
-    // only render when room matches or initial null selection handled
-    if(row.room_id === currentRoom) renderMessage(row)
+    if(row.room_id === currentRoom) insertMessageDOM(row)
   })
-  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages'}, payload=>{
+  ch.on('postgres_changes', { event:'UPDATE', schema:'public', table:'messages' }, payload=>{
     const row = payload.new
     const el = document.querySelector(`[data-id="${row.id}"]`)
-    if(el){
-      // replace the message node (easiest)
-      el.remove()
-      if(row.room_id === currentRoom) renderMessage(row)
-    }
+    if(el) el.remove()
+    if(row.room_id === currentRoom) insertMessageDOM(row)
   })
-  ch.on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'}, payload=>{
+  ch.on('postgres_changes', { event:'DELETE', schema:'public', table:'messages' }, payload=>{
     const id = payload.old.id
     const el = document.querySelector(`[data-id="${id}"]`)
     if(el) el.remove()
   })
-
-  // online users changes (insert/upsert)
-  ch.on('postgres_changes',{event:'INSERT',schema:'public',table:'online_users'},payload=>{
-    loadOnlineUsers()
-  })
-  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'online_users'},payload=>{
-    loadOnlineUsers()
-  })
+  // online_users changes
+  ch.on('postgres_changes', { event:'INSERT', schema:'public', table:'online_users' }, ()=> loadOnlineUsers())
+  ch.on('postgres_changes', { event:'UPDATE', schema:'public', table:'online_users' }, ()=> loadOnlineUsers())
   ch.subscribe()
 }
 
-/* ---------- online users ---------- */
+/* online users */
 async function loadOnlineUsers(){
   try{
     const { data } = await supabase.from('online_users').select('*').order('last_seen',{ascending:false})
@@ -404,112 +392,61 @@ async function loadOnlineUsers(){
     })
   }catch(e){ logErr(e) }
 }
-
 async function updateOnline(){
   try{
-    await supabase.from('online_users').upsert({username, last_seen: new Date().toISOString()})
+    await supabase.from('online_users').upsert({ username, last_seen: new Date().toISOString() })
   }catch(e){ logErr(e) }
   setTimeout(updateOnline, 10000)
 }
 
-/* ---------- typing indicator ---------- */
-let typingTimer = null
-document.getElementById('msgBox').addEventListener('input', ()=>{
-  if(!currentRoom) return
-  // broadcast typing by inserting/updating online_users row with special field or use channel broadcast
-  supabase.channel('typing').send({
-    type:'broadcast',
-    event:'user_typing',
-    payload:{username, room: currentRoom}
-  })
-})
-
-supabase.channel('typing')
-.on('broadcast',{ event:'user_typing'}, payload=>{
-  if(payload.payload.room === currentRoom && payload.payload.username !== username){
-    typingIndicator.innerText = `${payload.payload.username} is typing...`
-    clearTimeout(typingTimeout)
-    typingTimeout = setTimeout(()=> typingIndicator.innerText = '', 1600)
-  }
-})
-.subscribe()
-
-/* ---------- SETTINGS: avatar upload ---------- */
+/* settings: avatar upload */
 document.getElementById('avatarInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0]
-  if(!file) return
+  const file = e.target.files[0]; if(!file) return
   const path = `avatars/${username}_${Date.now()}_${file.name}`
   try{
-    await supabase.storage.from('images').upload(path, file, {upsert:true})
+    const { error } = await supabase.storage.from('images').upload(path, file, { upsert:true })
+    if(error) throw error
     avatarURL = supabase.storage.from('images').getPublicUrl(path).publicUrl
     profilePic.src = avatarURL
     localStorage.setItem('avatarURL', avatarURL)
-    // also upsert into users table (optional)
-    await supabase.from('users').upsert({username, avatar_url:avatarURL})
+    await supabase.from('users').upsert({ username, avatar_url: avatarURL })
     toast('Avatar uploaded')
-  }catch(e){ logErr(e); toast('Avatar upload failed') }
+  }catch(err){ logErr(err); toast('Avatar upload failed') }
 })
 
-/* ---------- THEMES ---------- */
+/* themes */
 function applyTheme(name){
-  if(name==='light'){
-    document.documentElement.style.setProperty('--bg','#ece5dd')
-    document.documentElement.style.setProperty('--sidebar','#111b21')
-    document.documentElement.style.setProperty('--header','#202c33')
-  }else if(name==='dark'){
-    document.documentElement.style.setProperty('--bg','#07141a')
-    document.documentElement.style.setProperty('--sidebar','#0b141a')
-    document.documentElement.style.setProperty('--header','#0d1a20')
-    document.documentElement.style.setProperty('--msgother','#202c33')
-  }else if(name==='blue'){
-    document.documentElement.style.setProperty('--accent','#3b82f6')
-    document.documentElement.style.setProperty('--msgme','#dbeafe')
-  }
+  if(name==='light'){ document.documentElement.style.setProperty('--bg','#ece5dd'); document.documentElement.style.setProperty('--sidebar','#111b21'); document.documentElement.style.setProperty('--header','#202c33') }
+  else if(name==='dark'){ document.documentElement.style.setProperty('--bg','#07141a'); document.documentElement.style.setProperty('--sidebar','#0b141a'); document.documentElement.style.setProperty('--header','#0d1a20'); document.documentElement.style.setProperty('--msgother','#202c33') }
+  else if(name==='blue'){ document.documentElement.style.setProperty('--accent','#3b82f6'); document.documentElement.style.setProperty('--msgme','#dbeafe') }
 }
 
-/* ---------- Init & event wiring ---------- */
-document.getElementById('newRoomBtn').onclick = async ()=>{ const name = prompt('Room name'); if(name) await supabase.from('rooms').insert({name}).then(loadRooms) }
-document.getElementById('joinGeneralBtn').onclick = async ()=>{ await ensureGeneral(); await loadRooms(); }
+/* UI events wiring */
+document.getElementById('newRoomBtn').onclick = async ()=> { const name = prompt('Room name'); if(name) await supabase.from('rooms').insert({name}).then(loadRooms) }
+document.getElementById('joinGeneralBtn').onclick = async ()=> { await ensureGeneral(); await loadRooms() }
 document.getElementById('send').onclick = sendMessage
-document.getElementById('attachBtn').onclick = ()=>document.getElementById('fileInput').click()
-document.getElementById('fileInput').addEventListener('change', ()=>{} /* handled in sendMessage */)
-document.getElementById('settingsBtn').addEventListener('click', ()=>{ document.getElementById('settings').style.display = 'block' })
+document.getElementById('attachBtn').onclick = ()=> document.getElementById('fileInput').click()
+document.getElementById('fileInput').addEventListener('change', ()=>{} /* processed in sendMessage */)
+document.getElementById('settingsBtn').addEventListener('click', ()=> { document.getElementById('settings').style.display = 'block' })
 document.getElementById('saveSettings').addEventListener('click', async ()=>{
   const newName = document.getElementById('nameInput').value.trim()
-  if(newName){ username = newName; localStorage.setItem('username', username); usernameLabel.innerText = username; }
-  document.getElementById('settings').style.display='none'
+  if(newName){ username = newName; localStorage.setItem('username', username); usernameLabel.innerText = username }
+  document.getElementById('settings').style.display = 'none'
 })
 
+/* init */
 async function init(){
   await ensureGeneral()
   await loadRooms()
-  // pick first room if none chosen
-  if(!currentRoom){
-    const { data } = await supabase.from('rooms').select('id,name').limit(1).order('created_at',{ascending:true})
-    if(data && data.length) selectRoom(data[0].id, data[0].name)
-  }
+  const first = await supabase.from('rooms').select('id,name').order('created_at',{ascending:true}).limit(1)
+  if(first.data && first.data.length && !currentRoom) selectRoom(first.data[0].id, first.data[0].name)
   subscribeRealtime()
   updateOnline()
   loadOnlineUsers()
-  // poll messages initially
-  if(currentRoom) loadMessages()
+  // initial messages loaded in selectRoom -> loadMessages
 }
 
-/* small helper to render messages passed from realtime insert (payload is a POJO) */
-function renderMessage(row){
-  // Insert into DOM in order - for simplicity append; loadMessages will keep consistent order on initial load
-  if(!row) return
-  // convert id maybe string, ensure we don't duplicate
-  if(document.querySelector(`[data-id="${row.id}"]`)) return
-  renderMessageNode(row)
-}
-/* renderMessageNode is similar to renderMessage but used for realtime inserts to keep code clear */
-function renderMessageNode(m){
-  // reuse renderMessage above
-  renderMessage(m)
-}
-
-/* start */
+/* start app */
 init().catch(logErr)
 
 </script>
