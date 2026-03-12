@@ -2,34 +2,39 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SkoolChat</title>
-
+<title>SkoolChat Full</title>
 <style>
+:root{
+--bg:#ece5dd;
+--sidebar:#111b21;
+--header:#202c33;
+--msgme:#d9fdd3;
+--msgother:white;
+--accent:#25d366;
+}
 
 body{
 margin:0;
 font-family:sans-serif;
 display:flex;
 height:100vh;
-background:#ece5dd;
+background:var(--bg);
 }
-
-/* sidebar */
 
 #sidebar{
 width:280px;
-background:#111b21;
+background:var(--sidebar);
 color:white;
 display:flex;
 flex-direction:column;
 }
 
 #profile{
-padding:15px;
-background:#202c33;
+padding:14px;
+background:var(--header);
 display:flex;
+justify-content:space-between;
 align-items:center;
-gap:10px;
 }
 
 #rooms{
@@ -39,15 +44,22 @@ overflow:auto;
 
 .room{
 padding:12px;
-cursor:pointer;
 border-bottom:1px solid #2a3942;
+cursor:pointer;
+display:flex;
+align-items:center;
 }
 
 .room:hover{
 background:#2a3942;
 }
 
-/* chat area */
+.room img{
+width:30px;
+height:30px;
+border-radius:50%;
+margin-right:10px;
+}
 
 #main{
 flex:1;
@@ -55,8 +67,8 @@ display:flex;
 flex-direction:column;
 }
 
-#header{
-background:#202c33;
+#chatHeader{
+background:var(--header);
 color:white;
 padding:12px;
 }
@@ -72,21 +84,24 @@ max-width:65%;
 padding:8px 12px;
 border-radius:8px;
 margin:6px 0;
+animation:fade .2s;
+word-wrap:break-word;
 }
 
 .me{
-background:#d9fdd3;
+background:var(--msgme);
 margin-left:auto;
 }
 
 .other{
-background:white;
+background:var(--msgother);
 }
 
 #inputBar{
 display:flex;
 padding:10px;
 background:#f0f0f0;
+align-items:center;
 }
 
 #msgBox{
@@ -98,7 +113,7 @@ border:1px solid #ccc;
 
 #send{
 margin-left:8px;
-background:#25d366;
+background:var(--accent);
 border:none;
 padding:10px 16px;
 border-radius:20px;
@@ -117,9 +132,27 @@ background:white;
 padding:15px;
 border-radius:10px;
 display:none;
-box-shadow:0 5px 20px rgba(0,0,0,.2);
+box-shadow:0 10px 30px rgba(0,0,0,.2);
+width:220px;
 }
 
+.theme{
+cursor:pointer;
+padding:5px;
+}
+
+#onlineUsers{
+background:#202c33;
+color:white;
+padding:10px;
+max-height:150px;
+overflow:auto;
+}
+
+@keyframes fade{
+from{opacity:0;transform:translateY(5px)}
+to{opacity:1}
+}
 </style>
 </head>
 
@@ -128,266 +161,220 @@ box-shadow:0 5px 20px rgba(0,0,0,.2);
 <div id="sidebar">
 
 <div id="profile">
-<span id="usernameLabel">User</span>
+<img id="profilePic" src="" width="35" height="35" style="border-radius:50%">
+<span id="usernameLabel"></span>
 <button onclick="toggleSettings()">⚙️</button>
 </div>
 
 <div id="rooms"></div>
+<button onclick="createRoom()">+ Room</button>
 
-<button onclick="createRoom()">+ New Room</button>
-
+<div id="onlineUsers"></div>
 </div>
 
 <div id="main">
-
-<div id="header">Chat</div>
-
+<div id="chatHeader">Chat</div>
 <div id="messages"></div>
-
 <div id="inputBar">
 <input id="msgBox" placeholder="Message">
+<input type="file" id="fileInput" accept="image/*,audio/*" style="display:none">
+<button onclick="document.getElementById('fileInput').click()">📎</button>
 <button id="send">Send</button>
 </div>
-
 </div>
-
 
 <div id="settings">
-
-<h3>Settings</h3>
-
-<input id="nameInput" placeholder="username">
-<br><br>
-
-<button onclick="saveProfile()">Save</button>
-
-<button onclick="logout()">Logout</button>
-
+<b>Settings</b><br><br>
+Change name:<br>
+<input id="nameInput"><br><br>
+Change profile picture:<br>
+<input type="file" id="avatarInput"><br><br>
+Themes:<br>
+<div class="theme" onclick="themeLight()">Light</div>
+<div class="theme" onclick="themeDark()">Dark</div>
+<div class="theme" onclick="themeBlue()">Blue</div><br>
+<button onclick="saveSettings()">Save</button>
 </div>
 
-
 <script type="module">
-
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
 
-
 const supabase = createClient(
-"https://gkkacqhittcxuogqgjge.supabase.co",
-"sb_publishable_d4EZ5SBYs4EKyZ0_5Tlj0g_JSb0l-yI"
+"https://rlznpgcdfcsffrwkgniu.supabase.co",
+"sb_publishable_5DTkj5jJBVeD02GIP2LCxw_EPQKDG7v"
 )
 
+let username = localStorage.getItem("username")
+let currentRoom = null
+let avatarURL = localStorage.getItem("avatarURL") || ""
 
-let user=null
-let currentRoom=null
+const roomsDiv = document.getElementById("rooms")
+const messagesDiv = document.getElementById("messages")
+const onlineDiv = document.getElementById("onlineUsers")
+const profilePic = document.getElementById("profilePic")
 
+// Login
+if(!username){
+    username = prompt("Choose a username")
+    localStorage.setItem("username", username)
+}
 
-const messagesDiv=document.getElementById("messages")
-const roomsDiv=document.getElementById("rooms")
+// Update UI
+document.getElementById("usernameLabel").innerText = username
+document.getElementById("nameInput").value = username
+profilePic.src = avatarURL || "https://via.placeholder.com/35"
 
-
+// Settings
 function toggleSettings(){
-const s=document.getElementById("settings")
-s.style.display=s.style.display==="block"?"none":"block"
+    const s = document.getElementById("settings")
+    s.style.display = s.style.display==="block"?"none":"block"
 }
 
+async function saveSettings(){
+    username = document.getElementById("nameInput").value
+    localStorage.setItem("username", username)
+    document.getElementById("usernameLabel").innerText = username
 
-async function login(){
+    const avatarFile = document.getElementById("avatarInput").files[0]
+    if(avatarFile){
+        const {data, error} = await supabase.storage.from('images').upload('avatars/'+username, avatarFile, {upsert:true})
+        if(!error){
+            avatarURL = supabase.storage.from('images').getPublicUrl('avatars/'+username).publicUrl
+            profilePic.src = avatarURL
+            localStorage.setItem("avatarURL", avatarURL)
+            // Update in users table
+            await supabase.from('users').upsert({username, avatar_url: avatarURL})
+        }
+    } else {
+        await supabase.from('users').upsert({username, avatar_url: avatarURL})
+    }
 
-const email=prompt("enter email")
-
-await supabase.auth.signInWithOtp({email})
-
-alert("check email then reload")
-
+    alert("Settings saved")
 }
 
-
-async function getUser(){
-
-const {data}=await supabase.auth.getUser()
-
-if(!data.user){
-
-await login()
-
-return
-
-}
-
-user=data.user
-
-}
-
-
+// Rooms
 async function loadRooms(){
-
-const {data}=await supabase
-.from("rooms")
-.select("*")
-
-roomsDiv.innerHTML=""
-
-data.forEach(r=>{
-
-const div=document.createElement("div")
-
-div.className="room"
-
-div.innerText=r.name
-
-div.onclick=()=>openRoom(r.id,r.name)
-
-roomsDiv.appendChild(div)
-
-})
-
+    const {data} = await supabase.from("rooms").select("*")
+    roomsDiv.innerHTML=""
+    data.forEach(r=>{
+        const div = document.createElement("div")
+        div.className="room"
+        div.innerHTML = `<img src="https://via.placeholder.com/30"> ${r.name}`
+        div.onclick = ()=>openRoom(r.id, r.name)
+        roomsDiv.appendChild(div)
+    })
 }
-
 
 async function createRoom(){
-
-const name=prompt("room name")
-
-if(!name)return
-
-await supabase
-.from("rooms")
-.insert({name})
-
-loadRooms()
-
+    const name = prompt("Room name")
+    if(!name) return
+    await supabase.from("rooms").insert({name})
+    loadRooms()
 }
-
 
 async function openRoom(id,name){
-
-currentRoom=id
-
-document.getElementById("header").innerText=name
-
-loadMessages()
-
+    currentRoom = id
+    document.getElementById("chatHeader").innerText = name
+    loadMessages()
 }
 
-
+// Messages
 function addMessage(m){
-
-const div=document.createElement("div")
-
-div.className="msg "+(m.sender_id===user.id?"me":"other")
-
-div.innerText=m.content
-
-messagesDiv.appendChild(div)
-
-messagesDiv.scrollTop=messagesDiv.scrollHeight
-
+    const div = document.createElement("div")
+    div.className = "msg "+(m.username===username?"me":"other")
+    let avatar = m.avatar_url || "https://via.placeholder.com/25"
+    div.innerHTML = `<b>${m.username}</b><br>${m.message || ""} ${m.image_url?'<img src="'+m.image_url+'" style="max-width:150px;display:block">':''} ${m.audio_url?'<audio controls src="'+m.audio_url+'"></audio>':''}`
+    messagesDiv.appendChild(div)
+    messagesDiv.scrollTop = messagesDiv.scrollHeight
 }
-
 
 async function loadMessages(){
-
-if(!currentRoom)return
-
-const {data}=await supabase
-.from("messages")
-.select("*")
-.eq("room_id",currentRoom)
-.order("created_at",{ascending:true})
-
-messagesDiv.innerHTML=""
-
-data.forEach(addMessage)
-
+    if(!currentRoom) return
+    const {data} = await supabase
+        .from("messages")
+        .select("*")
+        .eq("room_id", currentRoom)
+        .order("created_at",{ascending:true})
+    messagesDiv.innerHTML=""
+    data.forEach(addMessage)
 }
-
 
 async function sendMessage(){
+    const box = document.getElementById("msgBox")
+    const text = box.value.trim()
+    const fileInput = document.getElementById("fileInput")
+    let image_url = null
+    let audio_url = null
 
-const box=document.getElementById("msgBox")
+    if(fileInput.files.length>0){
+        const file = fileInput.files[0]
+        const type = file.type.startsWith('image')?'images':'voice'
+        const path = type+'/'+Date.now()+'_'+file.name
+        const {data,error} = await supabase.storage.from(type).upload(path,file)
+        if(!error){
+            const pub = supabase.storage.from(type).getPublicUrl(path).publicUrl
+            if(type==='images') image_url=pub
+            else audio_url=pub
+        }
+        fileInput.value=""
+    }
 
-const text=box.value.trim()
-
-if(!text)return
-
-await supabase
-.from("messages")
-.insert({
-room_id:currentRoom,
-sender_id:user.id,
-content:text
-})
-
-box.value=""
-
+    if(!text && !image_url && !audio_url) return
+    await supabase.from("messages").insert({
+        room_id: currentRoom,
+        username,
+        message: text,
+        image_url,
+        audio_url,
+        avatar_url: avatarURL
+    })
+    box.value=""
 }
 
-
-async function subscribe(){
-
-supabase
-.channel("realtime")
-
-.on(
-"postgres_changes",
-{
-event:"INSERT",
-schema:"public",
-table:"messages"
-},
-payload=>{
-
-if(payload.new.room_id===currentRoom)
-addMessage(payload.new)
-
-})
-
-.subscribe()
-
+// Online users
+async function loadOnline(){
+    const {data} = await supabase.from("online_users").select("*")
+    onlineDiv.innerHTML=""
+    data.forEach(u=>{
+        onlineDiv.innerHTML += `<div>${u.username}</div>`
+    })
 }
 
-
-async function saveProfile(){
-
-const name=document.getElementById("nameInput").value
-
-await supabase
-.from("users")
-.insert({
-auth_id:user.id,
-username:name
-})
-
-document.getElementById("usernameLabel").innerText=name
-
+// Realtime
+function subscribe(){
+    supabase.channel('chat')
+    .on('postgres_changes', {event:"INSERT", schema:"public", table:"messages"}, payload=>{
+        if(payload.new.room_id === currentRoom) addMessage(payload.new)
+    })
+    .on('postgres_changes', {event:"INSERT", schema:"public", table:"online_users"}, payload=>{
+        loadOnline()
+    })
+    .subscribe()
 }
 
-
-async function logout(){
-
-await supabase.auth.signOut()
-
-location.reload()
-
+// Typing & update online
+async function updateOnline(){
+    await supabase.from("online_users").upsert({username,last_seen:new Date().toISOString()})
+    setTimeout(updateOnline,10000)
 }
 
+// Themes
+function themeLight(){ document.documentElement.style.setProperty("--bg","#ece5dd") }
+function themeDark(){ 
+    document.documentElement.style.setProperty("--bg","#0b141a")
+    document.documentElement.style.setProperty("--msgother","#202c33")
+}
+function themeBlue(){ document.documentElement.style.setProperty("--accent","#3b82f6") }
 
-document.getElementById("send").onclick=sendMessage
-
-
-async function start(){
-
-await getUser()
-
+// Init
+document.getElementById("send").onclick = sendMessage
+document.getElementById("msgBox").addEventListener("keydown", e=>{if(e.key==="Enter") sendMessage()})
+document.getElementById("fileInput").addEventListener("change",sendMessage)
 loadRooms()
-
 subscribe()
-
-}
-
-start()
+updateOnline()
+loadOnline()
 
 </script>
-
 </body>
 </html>
