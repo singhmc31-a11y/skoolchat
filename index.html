@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>SkoolChat — Fixed imports & themes</title>
+<title>SkoolChat — Color-picker + robust</title>
 <style>
 :root{
   --bg:#ece5dd;
@@ -65,7 +65,7 @@ body{
 .iconBtn{background:transparent;border:none;font-size:18px;cursor:pointer}
 
 /* settings */
-#settings{position:fixed;left:24px;top:70px;background:#fff;padding:12px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);display:none;width:260px}
+#settings{position:fixed;left:24px;top:70px;background:#fff;padding:12px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);display:none;width:280px}
 .theme{cursor:pointer;padding:6px;border-radius:6px;margin-top:6px;background:#f0f0f0}
 
 /* online */
@@ -122,21 +122,18 @@ body{
   <h3>Settings</h3>
   <label>Display name</label><br>
   <input id="nameInput" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc"><br><br>
+
   <label>Profile picture</label><br>
   <input id="avatarInput" type="file" accept="image/*"><br><br>
-  <label>Themes</label>
-  <div class="theme" id="themeLight">Light</div>
-  <div class="theme" id="themeDark">Dark</div>
-  <div class="theme" id="themeBlue">Blue</div>
-  <br>
+
+  <label>Accent color</label><br>
+  <input id="colorPicker" type="color" value="#25d366" style="width:100%;height:36px;padding:4px;border-radius:6px;border:1px solid #ccc"><br><br>
+
   <button id="saveSettings" style="padding:8px;border-radius:6px;background:#25d366;color:#fff;border:none;cursor:pointer">Save</button>
 </div>
 
 <script type="module">
-/*
-  Fixed import: use Skypack ESM which resolves correctly and avoids the earlier +esm 404s.
-  If Skypack is blocked in the future, we can fall back to another CDN.
-*/
+/* stable import */
 import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js';
 
 // ---------------- CONFIG (your Supabase project) ----------------
@@ -159,13 +156,14 @@ const profilePic = document.getElementById('profilePic');
 const roomTitle = document.getElementById('roomTitle');
 const typingIndicator = document.getElementById('typingIndicator');
 const onlineList = document.getElementById('onlineList');
+const colorPicker = document.getElementById('colorPicker');
 
 /* helpers */
 const logErr = (e)=>console.error(e);
 const toast = (t)=>console.log('TOAST:',t);
 const escapeHtml = (s)=> { if(!s) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); };
 
-/* ASK display name once */
+/* ask for username once */
 if(!username){
   username = prompt("Pick a display name (no signup):") || ("user"+Math.floor(Math.random()*1000));
   localStorage.setItem('username', username);
@@ -173,6 +171,30 @@ if(!username){
 usernameLabel.innerText = username;
 document.getElementById('nameInput').value = username;
 profilePic.src = avatarURL || profilePic.src;
+
+/* set saved accent color if present */
+const savedAccent = localStorage.getItem('accentColor');
+if(savedAccent){
+  document.documentElement.style.setProperty('--accent', savedAccent);
+  colorPicker.value = savedAccent;
+  // set a softened my-message color
+  document.documentElement.style.setProperty('--msgme', lightenHex(savedAccent, 0.8));
+}
+
+/* UTILS: lighten hex color by factor (0..1) */
+function lightenHex(hex, factor){
+  try{
+    hex = hex.replace('#','');
+    if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+    const r = parseInt(hex.substring(0,2),16);
+    const g = parseInt(hex.substring(2,4),16);
+    const b = parseInt(hex.substring(4,6),16);
+    const nr = Math.round(r + (255 - r) * (1 - factor));
+    const ng = Math.round(g + (255 - g) * (1 - factor));
+    const nb = Math.round(b + (255 - b) * (1 - factor));
+    return '#' + [nr,ng,nb].map(v=>v.toString(16).padStart(2,'0')).join('');
+  }catch(e){ return hex; }
+}
 
 /* ROOMS */
 async function ensureGeneral(){
@@ -227,24 +249,23 @@ async function loadMessages(){
   }catch(e){ logErr(e) }
 }
 
-/* INSERT message DOM (no duplicates) */
+/* INSERT message DOM */
 function insertMessageDOM(m){
   if(!m || !m.id) return;
   if(document.querySelector(`[data-id="${m.id}"]`)) return;
-  const row = document.createElement('div');
-  row.className = 'msgRow';
-  row.dataset.id = m.id;
+  const row = document.createElement('div'); row.className='msgRow'; row.dataset.id = m.id;
   const isMe = (m.username === username);
-  const msgWrap = document.createElement('div');
-  msgWrap.className = 'msg ' + (isMe ? 'me' : 'other');
-  const avatar = m.avatar_url || 'https://i.imgur.com/HeIi0wU.png';
+  const msgWrap = document.createElement('div'); msgWrap.className = 'msg ' + (isMe ? 'me' : 'other');
+  // header & body
+  const avatar = (m.avatar_url ?? m.avatar);
   const header = `<div style="font-weight:700">${escapeHtml(m.username)}</div>`;
   const body = m.message ? `<div>${escapeHtml(m.message)}</div>` : '';
   const imgHtml = m.image_url ? `<div style="margin-top:6px"><img src="${m.image_url}" style="max-width:220px;border-radius:8px"></div>` : '';
   const audioHtml = m.audio_url ? `<div style="margin-top:6px"><audio controls src="${m.audio_url}"></audio></div>` : '';
-  const meta = `<div class="meta">${new Date(m.created_at).toLocaleString()}${m.edited? ' • edited':''}</div>`;
+  const meta = `<div class="meta">${new Date(m.created_at).toLocaleTimeString()}${m.edited? ' • edited':''}</div>`;
   msgWrap.innerHTML = header + body + imgHtml + audioHtml + meta;
-  const ctr = document.createElement('div'); ctr.className = 'controls';
+  // controls
+  const ctr = document.createElement('div'); ctr.className='controls';
   const replyBtn = document.createElement('button'); replyBtn.textContent='↩'; replyBtn.title='Reply';
   replyBtn.onclick = ()=>replyToMessage(m);
   const reactBtn = document.createElement('button'); reactBtn.textContent='😊'; reactBtn.title='React';
@@ -258,19 +279,18 @@ function insertMessageDOM(m){
     ctr.appendChild(editBtn); ctr.appendChild(delBtn);
   }
   msgWrap.appendChild(ctr);
-  const avatarEl = document.createElement('img'); avatarEl.src = avatar; avatarEl.style.width='34px'; avatarEl.style.height='34px'; avatarEl.style.borderRadius='50%';
+  const avatarEl = document.createElement('img'); avatarEl.src = avatar || 'https://i.imgur.com/HeIi0wU.png'; avatarEl.style.width='34px'; avatarEl.style.height='34px'; avatarEl.style.borderRadius='50%';
   if(isMe){
     row.appendChild(msgWrap);
   } else {
     row.appendChild(avatarEl);
     row.appendChild(msgWrap);
   }
-  row.setAttribute('data-id', m.id);
   messagesEl.appendChild(row);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-/* send message (with optional file) */
+/* SEND message — robust: handles missing avatar_url column by retrying without it */
 async function sendMessage(){
   const box = document.getElementById('msgBox');
   const fileInput = document.getElementById('fileInput');
@@ -282,25 +302,37 @@ async function sendMessage(){
     const bucket = file.type.startsWith('image') ? 'images' : 'voice';
     const path = `${bucket}/${crypto.randomUUID()}_${file.name}`;
     try{
-      const { error } = await supabase.storage.from(bucket).upload(path, file, {upsert:true});
+      const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert:true });
       if(error) throw error;
       const pub = supabase.storage.from(bucket).getPublicUrl(path).publicUrl;
-      if(bucket==='images') image_url = pub;
-      else audio_url = pub;
-    }catch(e){ logErr(e); toast('Upload failed') }
+      if(bucket==='images') image_url = pub; else audio_url = pub;
+    }catch(e){ logErr(e); toast('Upload failed (check bucket exists)') }
     fileInput.value = '';
   }
 
   if(!text && !image_url && !audio_url) return;
+
+  // try to include avatar_url if we have it — but if DB rejects, retry without
+  let payload = { room_id: currentRoom, username, message: text || null, image_url, audio_url, avatar_url: avatarURL || null };
   try{
-    const payload = { room_id: currentRoom, username, message: text || null, image_url, audio_url, avatar_url: avatarURL || null };
     const { error } = await supabase.from('messages').insert(payload);
-    if(error) throw error;
+    if(error){
+      // if error mentions missing column avatar_url (or any other), retry without it
+      const msg = String(error.message || error);
+      if(msg.includes('avatar_url') || msg.includes('could not find') || msg.includes('column') ){
+        // retry without avatar_url
+        payload = { room_id: currentRoom, username, message: text || null, image_url, audio_url };
+        const { error: err2 } = await supabase.from('messages').insert(payload);
+        if(err2) throw err2;
+      } else {
+        throw error;
+      }
+    }
     box.value = '';
   }catch(e){ logErr(e); toast('Send failed') }
 }
 
-/* edit/delete */
+/* EDIT / DELETE */
 async function editMessage(m){
   const newText = prompt('Edit message', m.message || '');
   if(newText === null) return;
@@ -319,7 +351,7 @@ async function deleteMessage(m){
   }catch(e){ logErr(e); toast('Delete failed') }
 }
 
-/* reactions & reply */
+/* REACTIONS & REPLY */
 async function reactToMessage(m){
   const emoji = prompt('React with emoji (e.g. 👍, 😂, ❤️)');
   if(!emoji) return;
@@ -331,7 +363,7 @@ function replyToMessage(m){
   box.focus();
 }
 
-/* typing (broadcast) */
+/* TYPING broadcast */
 const typingChannel = supabase.channel('typing-channel');
 typingChannel.on('broadcast', { event: 'user_typing' }, payload=>{
   if(payload.payload.room === currentRoom && payload.payload.username !== username){
@@ -345,7 +377,7 @@ document.getElementById('msgBox').addEventListener('input', ()=> {
   typingChannel.send({ type: 'broadcast', event: 'user_typing', payload: { username, room: currentRoom } });
 });
 
-/* realtime */
+/* REALTIME */
 function subscribeRealtime(){
   const ch = supabase.channel('realtime-messages');
   ch.on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload=>{
@@ -354,6 +386,7 @@ function subscribeRealtime(){
   });
   ch.on('postgres_changes', { event:'UPDATE', schema:'public', table:'messages' }, payload=>{
     const row = payload.new;
+    // rerender
     const el = document.querySelector(`[data-id="${row.id}"]`);
     if(el) el.remove();
     if(row.room_id === currentRoom) insertMessageDOM(row);
@@ -368,7 +401,7 @@ function subscribeRealtime(){
   ch.subscribe();
 }
 
-/* online users */
+/* ONLINE users */
 async function loadOnlineUsers(){
   try{
     const { data } = await supabase.from('online_users').select('*').order('last_seen',{ascending:false});
@@ -388,7 +421,7 @@ async function updateOnline(){
   setTimeout(updateOnline, 10000);
 }
 
-/* settings avatar upload */
+/* SETTINGS: avatar upload */
 document.getElementById('avatarInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0]; if(!file) return;
   const path = `avatars/${username}_${Date.now()}_${file.name}`;
@@ -398,45 +431,42 @@ document.getElementById('avatarInput').addEventListener('change', async (e)=>{
     avatarURL = supabase.storage.from('images').getPublicUrl(path).publicUrl;
     profilePic.src = avatarURL;
     localStorage.setItem('avatarURL', avatarURL);
-    await supabase.from('users').upsert({ username, avatar_url: avatarURL });
+    // don't assume users table exists, but try to upsert profile row for convenience
+    try{ await supabase.from('users').upsert({ username, avatar_url: avatarURL }) }catch(e){ /* ignore */ }
     toast('Avatar uploaded');
-  }catch(err){ logErr(err); toast('Avatar upload failed') }
+  }catch(err){ logErr(err); toast('Avatar upload failed — make sure bucket "images" exists') }
 });
 
-/* THEMES: expose applyTheme to window for any inline usage (defensive) */
-function applyTheme(name){
-  if(name==='light'){ document.documentElement.style.setProperty('--bg','#ece5dd'); document.documentElement.style.setProperty('--sidebar','#111b21'); document.documentElement.style.setProperty('--header','#202c33') }
-  else if(name==='dark'){ document.documentElement.style.setProperty('--bg','#07141a'); document.documentElement.style.setProperty('--sidebar','#0b141a'); document.documentElement.style.setProperty('--header','#0d1a20'); document.documentElement.style.setProperty('--msgother','#202c33') }
-  else if(name==='blue'){ document.documentElement.style.setProperty('--accent','#3b82f6'); document.documentElement.style.setProperty('--msgme','#dbeafe') }
-}
-window.applyTheme = applyTheme; // make callable from outside (helps inline handlers if any)
-
-/* wire up settings buttons (use event listeners, not inline) */
-document.getElementById('themeLight').addEventListener('click', ()=>applyTheme('light'));
-document.getElementById('themeDark').addEventListener('click', ()=>applyTheme('dark'));
-document.getElementById('themeBlue').addEventListener('click', ()=>applyTheme('blue'));
+/* COLOR PICKER */
+colorPicker.addEventListener('input', (e)=>{
+  const c = e.target.value;
+  localStorage.setItem('accentColor', c);
+  document.documentElement.style.setProperty('--accent', c);
+  // set a softer msgme
+  document.documentElement.style.setProperty('--msgme', lightenHex(c, 0.8));
+});
 
 /* UI events */
-document.getElementById('newRoomBtn').onclick = async ()=>{ const name = prompt('Room name'); if(name) await supabase.from('rooms').insert({name}).then(loadRooms) }
-document.getElementById('joinGeneralBtn').onclick = async ()=>{ await ensureGeneral(); await loadRooms() }
+document.getElementById('newRoomBtn').onclick = async ()=> { const name = prompt('Room name'); if(name) await supabase.from('rooms').insert({name}).then(loadRooms) }
+document.getElementById('joinGeneralBtn').onclick = async ()=> { await ensureGeneral(); await loadRooms() }
 document.getElementById('send').onclick = sendMessage
 document.getElementById('attachBtn').onclick = ()=> document.getElementById('fileInput').click()
 document.getElementById('settingsBtn').addEventListener('click', ()=> { document.getElementById('settings').style.display = 'block' })
 document.getElementById('saveSettings').addEventListener('click', async ()=>{
-  const newName = document.getElementById('nameInput').value.trim()
+  const newName = document.getElementById('nameInput').value.trim();
   if(newName){ username = newName; localStorage.setItem('username', username); usernameLabel.innerText = username }
   document.getElementById('settings').style.display = 'none'
-})
+});
 
-/* init */
+/* INIT */
 async function init(){
-  await ensureGeneral()
-  await loadRooms()
-  const first = await supabase.from('rooms').select('id,name').order('created_at',{ascending:true}).limit(1)
-  if(first.data && first.data.length && !currentRoom) selectRoom(first.data[0].id, first.data[0].name)
-  subscribeRealtime()
-  updateOnline()
-  loadOnlineUsers()
+  await ensureGeneral();
+  await loadRooms();
+  const first = await supabase.from('rooms').select('id,name').order('created_at',{ascending:true}).limit(1);
+  if(first.data && first.data.length && !currentRoom) selectRoom(first.data[0].id, first.data[0].name);
+  subscribeRealtime();
+  updateOnline();
+  loadOnlineUsers();
 }
 init().catch(logErr);
 
