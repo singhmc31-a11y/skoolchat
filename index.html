@@ -1,379 +1,516 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SkoolChat Full</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SkoolChat — full</title>
 <style>
 :root{
---bg:#ece5dd;
---sidebar:#111b21;
---header:#202c33;
---msgme:#d9fdd3;
---msgother:white;
---accent:#25d366;
+  --bg:#ece5dd;
+  --sidebar:#111b21;
+  --header:#202c33;
+  --msgme:#d9fdd3;
+  --msgother:white;
+  --accent:#25d366;
 }
-
+*{box-sizing:border-box}
 body{
-margin:0;
-font-family:sans-serif;
-display:flex;
-height:100vh;
-background:var(--bg);
+  margin:0;
+  font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;
+  display:flex;
+  height:100vh;
+  background:var(--bg);
+  color:#111;
 }
 
+/* sidebar */
 #sidebar{
-width:280px;
-background:var(--sidebar);
-color:white;
-display:flex;
-flex-direction:column;
+  width:300px;
+  background:var(--sidebar);
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:8px;
 }
-
 #profile{
-padding:14px;
-background:var(--header);
-display:flex;
-justify-content:space-between;
-align-items:center;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  background:var(--header);
+  border-radius:8px;
 }
+#profile img{width:44px;height:44px;border-radius:50%}
+#rooms{flex:1;overflow:auto;padding:4px}
+.room{padding:10px;border-radius:8px;display:flex;gap:8px;align-items:center;cursor:pointer}
+.room:hover{background:#27343a}
+.room img{width:36px;height:36px;border-radius:50%}
 
-#rooms{
-flex:1;
-overflow:auto;
-}
+/* main */
+#main{flex:1;display:flex;flex-direction:column}
+#chatHeader{display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--header);color:#fff}
+#messages{flex:1;overflow:auto;padding:16px;background:transparent}
+.msgRow{display:flex;margin-bottom:8px;gap:8px;align-items:flex-end}
+.msg{max-width:72%;padding:8px 10px;border-radius:10px;word-break:break-word;box-shadow:0 1px 0 rgba(0,0,0,0.05)}
+.msg.me{background:var(--msgme);margin-left:auto}
+.msg.other{background:var(--msgother)}
+.msg .meta{font-size:11px;color:#444;margin-top:6px;opacity:.7;text-align:right}
+.msg .controls{margin-top:6px;display:flex;gap:6px;font-size:13px}
+.small{font-size:12px;color:rgba(255,255,255,0.8)}
 
-.room{
-padding:12px;
-border-bottom:1px solid #2a3942;
-cursor:pointer;
-display:flex;
-align-items:center;
-}
+/* input */
+#inputBar{display:flex;gap:8px;padding:12px;background:#f3f3f3;align-items:center}
+#msgBox{flex:1;padding:10px;border-radius:20px;border:1px solid #ccc}
+#send{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:18px;cursor:pointer}
+.iconBtn{background:transparent;border:none;font-size:18px;cursor:pointer}
 
-.room:hover{
-background:#2a3942;
-}
+/* settings */
+#settings{position:fixed;left:24px;top:70px;background:#fff;padding:12px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);display:none;width:260px}
+.theme{cursor:pointer;padding:6px;border-radius:6px;margin-top:6px;background:#f0f0f0}
 
-.room img{
-width:30px;
-height:30px;
-border-radius:50%;
-margin-right:10px;
-}
+/* online */
+#online{padding:8px;background:#202c33;border-radius:8px;color:#fff;margin-top:8px;max-height:140px;overflow:auto}
 
-#main{
-flex:1;
-display:flex;
-flex-direction:column;
-}
-
-#chatHeader{
-background:var(--header);
-color:white;
-padding:12px;
-}
-
-#messages{
-flex:1;
-overflow:auto;
-padding:15px;
-}
-
-.msg{
-max-width:65%;
-padding:8px 12px;
-border-radius:8px;
-margin:6px 0;
-animation:fade .2s;
-word-wrap:break-word;
-}
-
-.me{
-background:var(--msgme);
-margin-left:auto;
-}
-
-.other{
-background:var(--msgother);
-}
-
-#inputBar{
-display:flex;
-padding:10px;
-background:#f0f0f0;
-align-items:center;
-}
-
-#msgBox{
-flex:1;
-padding:10px;
-border-radius:20px;
-border:1px solid #ccc;
-}
-
-#send{
-margin-left:8px;
-background:var(--accent);
-border:none;
-padding:10px 16px;
-border-radius:20px;
-cursor:pointer;
-}
-
-#send:active{
-transform:scale(.9);
-}
-
-#settings{
-position:absolute;
-top:60px;
-left:20px;
-background:white;
-padding:15px;
-border-radius:10px;
-display:none;
-box-shadow:0 10px 30px rgba(0,0,0,.2);
-width:220px;
-}
-
-.theme{
-cursor:pointer;
-padding:5px;
-}
-
-#onlineUsers{
-background:#202c33;
-color:white;
-padding:10px;
-max-height:150px;
-overflow:auto;
-}
-
-@keyframes fade{
-from{opacity:0;transform:translateY(5px)}
-to{opacity:1}
+/* responsiveness */
+@media(max-width:880px){
+  #sidebar{width:220px}
 }
 </style>
 </head>
-
 <body>
 
+<!-- SIDEBAR -->
 <div id="sidebar">
+  <div id="profile">
+    <img id="profilePic" src="https://i.imgur.com/HeIi0wU.png" alt="avatar">
+    <div>
+      <div id="usernameLabel" style="font-weight:700">User</div>
+      <div class="small" id="userSub">online</div>
+    </div>
+    <div style="margin-left:auto">
+      <button class="iconBtn" id="settingsBtn">⚙️</button>
+    </div>
+  </div>
 
-<div id="profile">
-<img id="profilePic" src="" width="35" height="35" style="border-radius:50%">
-<span id="usernameLabel"></span>
-<button onclick="toggleSettings()">⚙️</button>
+  <div id="rooms"></div>
+  <div style="display:flex;gap:8px">
+    <button id="newRoomBtn" style="flex:1;padding:8px;border-radius:8px;background:#2b3940;color:#fff;border:none;cursor:pointer">+ New Room</button>
+    <button id="joinGeneralBtn" title="Go to General" style="padding:8px;border-radius:8px;background:#25d366;color:#fff;border:none;cursor:pointer">G</button>
+  </div>
+
+  <div id="online" aria-live="polite"><strong>Online</strong><div id="onlineList"></div></div>
 </div>
 
-<div id="rooms"></div>
-<button onclick="createRoom()">+ Room</button>
-
-<div id="onlineUsers"></div>
-</div>
-
+<!-- MAIN -->
 <div id="main">
-<div id="chatHeader">Chat</div>
-<div id="messages"></div>
-<div id="inputBar">
-<input id="msgBox" placeholder="Message">
-<input type="file" id="fileInput" accept="image/*,audio/*" style="display:none">
-<button onclick="document.getElementById('fileInput').click()">📎</button>
-<button id="send">Send</button>
-</div>
+  <div id="chatHeader">
+    <div id="roomTitle">No room</div>
+    <div id="headerRight">
+      <span id="typingIndicator" style="opacity:.8;font-size:13px"></span>
+    </div>
+  </div>
+
+  <div id="messages"></div>
+
+  <div id="inputBar">
+    <input id="msgBox" placeholder="Message..." autocomplete="off">
+    <input id="fileInput" type="file" accept="image/*,audio/*" style="display:none">
+    <button class="iconBtn" id="attachBtn">📎</button>
+    <button id="send">Send</button>
+  </div>
 </div>
 
+<!-- SETTINGS PANEL -->
 <div id="settings">
-<b>Settings</b><br><br>
-Change name:<br>
-<input id="nameInput"><br><br>
-Change profile picture:<br>
-<input type="file" id="avatarInput"><br><br>
-Themes:<br>
-<div class="theme" onclick="themeLight()">Light</div>
-<div class="theme" onclick="themeDark()">Dark</div>
-<div class="theme" onclick="themeBlue()">Blue</div><br>
-<button onclick="saveSettings()">Save</button>
+  <h3>Settings</h3>
+  <label>Display name</label><br>
+  <input id="nameInput" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ccc"><br><br>
+  <label>Profile picture</label><br>
+  <input id="avatarInput" type="file" accept="image/*"><br><br>
+  <label>Themes</label>
+  <div class="theme" onclick="applyTheme('light')">Light</div>
+  <div class="theme" onclick="applyTheme('dark')">Dark</div>
+  <div class="theme" onclick="applyTheme('blue')">Blue</div>
+  <br>
+  <button id="saveSettings" style="padding:8px;border-radius:6px;background:#25d366;color:#fff;border:none;cursor:pointer">Save</button>
 </div>
 
 <script type="module">
+/* ------------- CONFIG (your project) ------------- */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
 
-const supabase = createClient(
-"https://rlznpgcdfcsffrwkgniu.supabase.co",
-"sb_publishable_5DTkj5jJBVeD02GIP2LCxw_EPQKDG7v"
-)
+const SUPABASE_URL = "https://rlznpgcdfcsffrwkgniu.supabase.co"
+const SUPABASE_KEY = "sb_publishable_5DTkj5jJBVeD02GIP2LCxw_EPQKDG7v"
 
-let username = localStorage.getItem("username")
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+/* ------------------------------------------------- */
+
+/* GLOBAL STATE */
+let username = localStorage.getItem('username') || null
+let avatarURL = localStorage.getItem('avatarURL') || ''
 let currentRoom = null
-let avatarURL = localStorage.getItem("avatarURL") || ""
+let typingTimeout = null
 
-const roomsDiv = document.getElementById("rooms")
-const messagesDiv = document.getElementById("messages")
-const onlineDiv = document.getElementById("onlineUsers")
-const profilePic = document.getElementById("profilePic")
+/* DOM refs */
+const roomsEl = document.getElementById('rooms')
+const messagesEl = document.getElementById('messages')
+const usernameLabel = document.getElementById('usernameLabel')
+const profilePic = document.getElementById('profilePic')
+const roomTitle = document.getElementById('roomTitle')
+const typingIndicator = document.getElementById('typingIndicator')
+const onlineList = document.getElementById('onlineList')
 
-// Login
+/* helper: safe console/log UI */
+function logErr(e){ console.error(e); }
+
+/* Prompt for username if none */
 if(!username){
-    username = prompt("Choose a username")
-    localStorage.setItem("username", username)
+  username = prompt("Pick a display name (no signup required):") || ("user-"+Math.floor(Math.random()*1000))
+  localStorage.setItem('username', username)
 }
+usernameLabel.innerText = username
+document.getElementById('nameInput').value = username
+profilePic.src = avatarURL || profilePic.src
 
-// Update UI
-document.getElementById("usernameLabel").innerText = username
-document.getElementById("nameInput").value = username
-profilePic.src = avatarURL || "https://via.placeholder.com/35"
+/* Utility: show small ui toast (console fallback) */
+function toast(msg){ console.log("TOAST:",msg) }
 
-// Settings
-function toggleSettings(){
-    const s = document.getElementById("settings")
-    s.style.display = s.style.display==="block"?"none":"block"
-}
-
-async function saveSettings(){
-    username = document.getElementById("nameInput").value
-    localStorage.setItem("username", username)
-    document.getElementById("usernameLabel").innerText = username
-
-    const avatarFile = document.getElementById("avatarInput").files[0]
-    if(avatarFile){
-        const {data, error} = await supabase.storage.from('images').upload('avatars/'+username, avatarFile, {upsert:true})
-        if(!error){
-            avatarURL = supabase.storage.from('images').getPublicUrl('avatars/'+username).publicUrl
-            profilePic.src = avatarURL
-            localStorage.setItem("avatarURL", avatarURL)
-            // Update in users table
-            await supabase.from('users').upsert({username, avatar_url: avatarURL})
-        }
-    } else {
-        await supabase.from('users').upsert({username, avatar_url: avatarURL})
+/* ---------- ROOMS ---------- */
+async function ensureGeneral(){
+  try{
+    const { data } = await supabase.from('rooms').select('id,name').eq('name','General').limit(1)
+    if(!data || data.length===0){
+      await supabase.from('rooms').insert({name:'General'})
     }
-
-    alert("Settings saved")
+  }catch(e){ logErr(e) }
 }
 
-// Rooms
 async function loadRooms(){
-    const {data} = await supabase.from("rooms").select("*")
-    roomsDiv.innerHTML=""
+  try{
+    const { data, error } = await supabase.from('rooms').select('id,name').order('created_at',{ascending:true})
+    if(error) return logErr(error)
+    roomsEl.innerHTML = ''
+    if(!data || data.length===0){
+      // create default room fallback
+      await supabase.from('rooms').insert({name:'General'})
+      return loadRooms()
+    }
     data.forEach(r=>{
-        const div = document.createElement("div")
-        div.className="room"
-        div.innerHTML = `<img src="https://via.placeholder.com/30"> ${r.name}`
-        div.onclick = ()=>openRoom(r.id, r.name)
-        roomsDiv.appendChild(div)
+      const div = document.createElement('div')
+      div.className='room'
+      div.dataset.id = r.id
+      div.innerHTML = `<img src="https://i.imgur.com/HeIi0wU.png"><div style="flex:1">${r.name}</div>`
+      div.onclick = ()=>selectRoom(r.id,r.name)
+      roomsEl.appendChild(div)
     })
+    // pick first room if none selected
+    if(!currentRoom && data.length>0){
+      selectRoom(data[0].id, data[0].name)
+    }
+  }catch(e){ logErr(e) }
 }
 
-async function createRoom(){
-    const name = prompt("Room name")
-    if(!name) return
-    await supabase.from("rooms").insert({name})
-    loadRooms()
-}
-
-async function openRoom(id,name){
-    currentRoom = id
-    document.getElementById("chatHeader").innerText = name
-    loadMessages()
-}
-
-// Messages
-function addMessage(m){
-    const div = document.createElement("div")
-    div.className = "msg "+(m.username===username?"me":"other")
-    let avatar = m.avatar_url || "https://via.placeholder.com/25"
-    div.innerHTML = `<b>${m.username}</b><br>${m.message || ""} ${m.image_url?'<img src="'+m.image_url+'" style="max-width:150px;display:block">':''} ${m.audio_url?'<audio controls src="'+m.audio_url+'"></audio>':''}`
-    messagesDiv.appendChild(div)
-    messagesDiv.scrollTop = messagesDiv.scrollHeight
+/* ---------- SELECT ROOM & LOAD MESSAGES ---------- */
+async function selectRoom(id,name){
+  currentRoom = id
+  roomTitle.innerText = name
+  await loadMessages()
+  // update messages view
 }
 
 async function loadMessages(){
-    if(!currentRoom) return
-    const {data} = await supabase
-        .from("messages")
-        .select("*")
-        .eq("room_id", currentRoom)
-        .order("created_at",{ascending:true})
-    messagesDiv.innerHTML=""
-    data.forEach(addMessage)
+  if(!currentRoom) return
+  try{
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('room_id', currentRoom)
+      .order('created_at',{ascending:true})
+    if(error) return logErr(error)
+    messagesEl.innerHTML=''
+    if(!data) return
+    data.forEach(renderMessage)
+  }catch(e){ logErr(e) }
 }
 
+/* ---------- RENDER MESSAGE ---------- */
+function renderMessage(m){
+  // avoid duplicates (if realtime triggers)
+  if(document.querySelector(`[data-id="${m.id}"]`)) return
+  const row = document.createElement('div'); row.className='msgRow'
+  row.dataset.id = m.id
+  const isMe = (m.username === username)
+  const msgWrap = document.createElement('div'); msgWrap.className = 'msg '+(isMe?'me':'other')
+  // header: name + avatar if not me, else only text
+  const avatar = m.avatar_url || 'https://i.imgur.com/HeIi0wU.png'
+  const header = `<div style="font-weight:700">${m.username}</div>`
+  const body = m.message ? `<div>${escapeHtml(m.message)}</div>` : ''
+  const imgHtml = m.image_url ? `<div style="margin-top:6px"><img src="${m.image_url}" style="max-width:220px;border-radius:8px"></div>` : ''
+  const audioHtml = m.audio_url ? `<div style="margin-top:6px"><audio controls src="${m.audio_url}"></audio></div>` : ''
+  const meta = `<div class="meta">${new Date(m.created_at).toLocaleString()}${m.edited? ' • edited':''}</div>`
+  msgWrap.innerHTML = header + body + imgHtml + audioHtml + meta
+  // controls: reply, react, edit, delete (only for me)
+  const controls = document.createElement('div'); controls.className='controls'
+  const replyBtn = document.createElement('button'); replyBtn.textContent='↩'; replyBtn.title='Reply'
+  replyBtn.onclick = ()=>replyToMessage(m)
+  const reactBtn = document.createElement('button'); reactBtn.textContent='😊'; reactBtn.title='React'
+  reactBtn.onclick = ()=>reactToMessage(m)
+  controls.appendChild(replyBtn); controls.appendChild(reactBtn)
+  if(isMe){
+    const editBtn = document.createElement('button'); editBtn.textContent='✏️'; editBtn.title='Edit'
+    const delBtn = document.createElement('button'); delBtn.textContent='🗑'; delBtn.title='Delete'
+    editBtn.onclick = ()=>editMessage(m)
+    delBtn.onclick = ()=>deleteMessage(m)
+    controls.appendChild(editBtn); controls.appendChild(delBtn)
+  }
+  msgWrap.appendChild(controls)
+  // layout: avatar + message (avatar left for others, right for me)
+  const avatarEl = document.createElement('img'); avatarEl.src = avatar; avatarEl.style.width='34px'; avatarEl.style.height='34px'; avatarEl.style.borderRadius='50%'
+  if(isMe){
+    row.appendChild(msgWrap)
+    // optionally show small avatar at end
+  } else {
+    row.appendChild(avatarEl)
+    row.appendChild(msgWrap)
+  }
+  row.dataset.id = m.id
+  messagesEl.appendChild(row)
+  messagesEl.scrollTop = messagesEl.scrollHeight
+}
+
+/* ---------- ESCAPE HTML ---------- */
+function escapeHtml(str){ if(!str) return ''; return String(str).replace(/[&<>"']/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]}) }
+
+/* ---------- CRUD: send/edit/delete ---------- */
 async function sendMessage(){
-    const box = document.getElementById("msgBox")
-    const text = box.value.trim()
-    const fileInput = document.getElementById("fileInput")
-    let image_url = null
-    let audio_url = null
+  const box = document.getElementById('msgBox')
+  const fileInput = document.getElementById('fileInput')
+  const text = box.value.trim()
+  let image_url = null, audio_url = null
 
-    if(fileInput.files.length>0){
-        const file = fileInput.files[0]
-        const type = file.type.startsWith('image')?'images':'voice'
-        const path = type+'/'+Date.now()+'_'+file.name
-        const {data,error} = await supabase.storage.from(type).upload(path,file)
-        if(!error){
-            const pub = supabase.storage.from(type).getPublicUrl(path).publicUrl
-            if(type==='images') image_url=pub
-            else audio_url=pub
-        }
-        fileInput.value=""
+  // handle file if chosen
+  if(fileInput.files && fileInput.files.length>0){
+    const file = fileInput.files[0]
+    const ext = file.type.startsWith('image') ? 'images' : 'voice'
+    const path = `${ext}/${crypto.randomUUID()}_${file.name}`
+    try{
+      const { data, error } = await supabase.storage.from(ext).upload(path, file)
+      if(error) throw error
+      const pub = supabase.storage.from(ext).getPublicUrl(path).publicUrl
+      if(ext==='images') image_url = pub
+      else audio_url = pub
+    }catch(e){ logErr(e); toast('Upload failed') }
+    fileInput.value = ''
+  }
+
+  if(!text && !image_url && !audio_url) return
+
+  try{
+    const payload = {
+      room_id: currentRoom,
+      username,
+      message: text || null,
+      image_url,
+      audio_url,
+      avatar_url: avatarURL || null
     }
-
-    if(!text && !image_url && !audio_url) return
-    await supabase.from("messages").insert({
-        room_id: currentRoom,
-        username,
-        message: text,
-        image_url,
-        audio_url,
-        avatar_url: avatarURL
-    })
-    box.value=""
+    const { error } = await supabase.from('messages').insert(payload)
+    if(error) throw error
+    box.value = ''
+    // will render via realtime
+  }catch(e){ logErr(e); toast('Send failed') }
 }
 
-// Online users
-async function loadOnline(){
-    const {data} = await supabase.from("online_users").select("*")
-    onlineDiv.innerHTML=""
+async function editMessage(m){
+  const newText = prompt('Edit message', m.message || '')
+  if(newText===null) return
+  try{
+    const { error } = await supabase.from('messages').update({message:newText, edited:true}).eq('id', m.id)
+    if(error) throw error
+  }catch(e){ logErr(e); toast('Edit failed') }
+}
+
+async function deleteMessage(m){
+  if(!confirm('Delete message?')) return
+  try{
+    const { error } = await supabase.from('messages').delete().eq('id', m.id)
+    if(error) throw error
+    // remove from DOM
+    const el = document.querySelector(`[data-id="${m.id}"]`)
+    if(el) el.remove()
+  }catch(e){ logErr(e); toast('Delete failed') }
+}
+
+/* ---------- reactions & reply ---------- */
+async function reactToMessage(m){
+  const emoji = prompt('React with emoji (e.g. 👍,😂,❤️)')
+  if(!emoji) return
+  try{
+    await supabase.from('reactions').insert({message_id:m.id, username, emoji})
+  }catch(e){ logErr(e) }
+}
+
+async function replyToMessage(m){
+  const box = document.getElementById('msgBox')
+  box.value = `Reply to ${m.username}: `
+  box.focus()
+}
+
+/* ---------- realtime subscription ---------- */
+function subscribeRealtime(){
+  // channel name unique so we don't get duplicate listeners
+  const ch = supabase.channel('realtime-messages')
+  ch.on('postgres_changes', { event:'INSERT', schema:'public', table:'messages'}, payload=>{
+    const row = payload.new
+    // only render when room matches or initial null selection handled
+    if(row.room_id === currentRoom) renderMessage(row)
+  })
+  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages'}, payload=>{
+    const row = payload.new
+    const el = document.querySelector(`[data-id="${row.id}"]`)
+    if(el){
+      // replace the message node (easiest)
+      el.remove()
+      if(row.room_id === currentRoom) renderMessage(row)
+    }
+  })
+  ch.on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'}, payload=>{
+    const id = payload.old.id
+    const el = document.querySelector(`[data-id="${id}"]`)
+    if(el) el.remove()
+  })
+
+  // online users changes (insert/upsert)
+  ch.on('postgres_changes',{event:'INSERT',schema:'public',table:'online_users'},payload=>{
+    loadOnlineUsers()
+  })
+  ch.on('postgres_changes',{event:'UPDATE',schema:'public',table:'online_users'},payload=>{
+    loadOnlineUsers()
+  })
+  ch.subscribe()
+}
+
+/* ---------- online users ---------- */
+async function loadOnlineUsers(){
+  try{
+    const { data } = await supabase.from('online_users').select('*').order('last_seen',{ascending:false})
+    onlineList.innerHTML = ''
+    if(!data) return
     data.forEach(u=>{
-        onlineDiv.innerHTML += `<div>${u.username}</div>`
+      const d = document.createElement('div')
+      d.textContent = `${u.username} • ${new Date(u.last_seen).toLocaleTimeString()}`
+      onlineList.appendChild(d)
     })
+  }catch(e){ logErr(e) }
 }
 
-// Realtime
-function subscribe(){
-    supabase.channel('chat')
-    .on('postgres_changes', {event:"INSERT", schema:"public", table:"messages"}, payload=>{
-        if(payload.new.room_id === currentRoom) addMessage(payload.new)
-    })
-    .on('postgres_changes', {event:"INSERT", schema:"public", table:"online_users"}, payload=>{
-        loadOnline()
-    })
-    .subscribe()
-}
-
-// Typing & update online
 async function updateOnline(){
-    await supabase.from("online_users").upsert({username,last_seen:new Date().toISOString()})
-    setTimeout(updateOnline,10000)
+  try{
+    await supabase.from('online_users').upsert({username, last_seen: new Date().toISOString()})
+  }catch(e){ logErr(e) }
+  setTimeout(updateOnline, 10000)
 }
 
-// Themes
-function themeLight(){ document.documentElement.style.setProperty("--bg","#ece5dd") }
-function themeDark(){ 
-    document.documentElement.style.setProperty("--bg","#0b141a")
-    document.documentElement.style.setProperty("--msgother","#202c33")
-}
-function themeBlue(){ document.documentElement.style.setProperty("--accent","#3b82f6") }
+/* ---------- typing indicator ---------- */
+let typingTimer = null
+document.getElementById('msgBox').addEventListener('input', ()=>{
+  if(!currentRoom) return
+  // broadcast typing by inserting/updating online_users row with special field or use channel broadcast
+  supabase.channel('typing').send({
+    type:'broadcast',
+    event:'user_typing',
+    payload:{username, room: currentRoom}
+  })
+})
 
-// Init
-document.getElementById("send").onclick = sendMessage
-document.getElementById("msgBox").addEventListener("keydown", e=>{if(e.key==="Enter") sendMessage()})
-document.getElementById("fileInput").addEventListener("change",sendMessage)
-loadRooms()
-subscribe()
-updateOnline()
-loadOnline()
+supabase.channel('typing')
+.on('broadcast',{ event:'user_typing'}, payload=>{
+  if(payload.payload.room === currentRoom && payload.payload.username !== username){
+    typingIndicator.innerText = `${payload.payload.username} is typing...`
+    clearTimeout(typingTimeout)
+    typingTimeout = setTimeout(()=> typingIndicator.innerText = '', 1600)
+  }
+})
+.subscribe()
+
+/* ---------- SETTINGS: avatar upload ---------- */
+document.getElementById('avatarInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0]
+  if(!file) return
+  const path = `avatars/${username}_${Date.now()}_${file.name}`
+  try{
+    await supabase.storage.from('images').upload(path, file, {upsert:true})
+    avatarURL = supabase.storage.from('images').getPublicUrl(path).publicUrl
+    profilePic.src = avatarURL
+    localStorage.setItem('avatarURL', avatarURL)
+    // also upsert into users table (optional)
+    await supabase.from('users').upsert({username, avatar_url:avatarURL})
+    toast('Avatar uploaded')
+  }catch(e){ logErr(e); toast('Avatar upload failed') }
+})
+
+/* ---------- THEMES ---------- */
+function applyTheme(name){
+  if(name==='light'){
+    document.documentElement.style.setProperty('--bg','#ece5dd')
+    document.documentElement.style.setProperty('--sidebar','#111b21')
+    document.documentElement.style.setProperty('--header','#202c33')
+  }else if(name==='dark'){
+    document.documentElement.style.setProperty('--bg','#07141a')
+    document.documentElement.style.setProperty('--sidebar','#0b141a')
+    document.documentElement.style.setProperty('--header','#0d1a20')
+    document.documentElement.style.setProperty('--msgother','#202c33')
+  }else if(name==='blue'){
+    document.documentElement.style.setProperty('--accent','#3b82f6')
+    document.documentElement.style.setProperty('--msgme','#dbeafe')
+  }
+}
+
+/* ---------- Init & event wiring ---------- */
+document.getElementById('newRoomBtn').onclick = async ()=>{ const name = prompt('Room name'); if(name) await supabase.from('rooms').insert({name}).then(loadRooms) }
+document.getElementById('joinGeneralBtn').onclick = async ()=>{ await ensureGeneral(); await loadRooms(); }
+document.getElementById('send').onclick = sendMessage
+document.getElementById('attachBtn').onclick = ()=>document.getElementById('fileInput').click()
+document.getElementById('fileInput').addEventListener('change', ()=>{} /* handled in sendMessage */)
+document.getElementById('settingsBtn').addEventListener('click', ()=>{ document.getElementById('settings').style.display = 'block' })
+document.getElementById('saveSettings').addEventListener('click', async ()=>{
+  const newName = document.getElementById('nameInput').value.trim()
+  if(newName){ username = newName; localStorage.setItem('username', username); usernameLabel.innerText = username; }
+  document.getElementById('settings').style.display='none'
+})
+
+async function init(){
+  await ensureGeneral()
+  await loadRooms()
+  // pick first room if none chosen
+  if(!currentRoom){
+    const { data } = await supabase.from('rooms').select('id,name').limit(1).order('created_at',{ascending:true})
+    if(data && data.length) selectRoom(data[0].id, data[0].name)
+  }
+  subscribeRealtime()
+  updateOnline()
+  loadOnlineUsers()
+  // poll messages initially
+  if(currentRoom) loadMessages()
+}
+
+/* small helper to render messages passed from realtime insert (payload is a POJO) */
+function renderMessage(row){
+  // Insert into DOM in order - for simplicity append; loadMessages will keep consistent order on initial load
+  if(!row) return
+  // convert id maybe string, ensure we don't duplicate
+  if(document.querySelector(`[data-id="${row.id}"]`)) return
+  renderMessageNode(row)
+}
+/* renderMessageNode is similar to renderMessage but used for realtime inserts to keep code clear */
+function renderMessageNode(m){
+  // reuse renderMessage above
+  renderMessage(m)
+}
+
+/* start */
+init().catch(logErr)
 
 </script>
 </body>
