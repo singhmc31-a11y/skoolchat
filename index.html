@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>SkoolChat — Fixed</title>
+<title>SkoolChat — Fixed imports & themes</title>
 <style>
 :root{
   --bg:#ece5dd;
@@ -125,308 +125,302 @@ body{
   <label>Profile picture</label><br>
   <input id="avatarInput" type="file" accept="image/*"><br><br>
   <label>Themes</label>
-  <div class="theme" onclick="applyTheme('light')">Light</div>
-  <div class="theme" onclick="applyTheme('dark')">Dark</div>
-  <div class="theme" onclick="applyTheme('blue')">Blue</div>
+  <div class="theme" id="themeLight">Light</div>
+  <div class="theme" id="themeDark">Dark</div>
+  <div class="theme" id="themeBlue">Blue</div>
   <br>
   <button id="saveSettings" style="padding:8px;border-radius:6px;background:#25d366;color:#fff;border:none;cursor:pointer">Save</button>
 </div>
 
 <script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
+/*
+  Fixed import: use Skypack ESM which resolves correctly and avoids the earlier +esm 404s.
+  If Skypack is blocked in the future, we can fall back to another CDN.
+*/
+import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js';
 
 // ---------------- CONFIG (your Supabase project) ----------------
-const SUPABASE_URL = "https://rlznpgcdfcsffrwkgniu.supabase.co"
-const SUPABASE_KEY = "sb_publishable_5DTkj5jJBVeD02GIP2LCxw_EPQKDG7v"
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+const SUPABASE_URL = "https://rlznpgcdfcsffrwkgniu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_5DTkj5jJBVeD02GIP2LCxw_EPQKDG7v";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // ----------------------------------------------------------------
 
 /* STATE */
-let username = localStorage.getItem('username') || null
-let avatarURL = localStorage.getItem('avatarURL') || ''
-let currentRoom = null
+let username = localStorage.getItem('username') || null;
+let avatarURL = localStorage.getItem('avatarURL') || '';
+let currentRoom = null;
+let typingTimeout = null;
 
 /* DOM refs */
-const roomsEl = document.getElementById('rooms')
-const messagesEl = document.getElementById('messages')
-const usernameLabel = document.getElementById('usernameLabel')
-const profilePic = document.getElementById('profilePic')
-const roomTitle = document.getElementById('roomTitle')
-const typingIndicator = document.getElementById('typingIndicator')
-const onlineList = document.getElementById('onlineList')
+const roomsEl = document.getElementById('rooms');
+const messagesEl = document.getElementById('messages');
+const usernameLabel = document.getElementById('usernameLabel');
+const profilePic = document.getElementById('profilePic');
+const roomTitle = document.getElementById('roomTitle');
+const typingIndicator = document.getElementById('typingIndicator');
+const onlineList = document.getElementById('onlineList');
 
-/* small helpers */
-function logErr(e){ console.error(e) }
-function toast(t){ console.log('TOAST:',t) }
-function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+/* helpers */
+const logErr = (e)=>console.error(e);
+const toast = (t)=>console.log('TOAST:',t);
+const escapeHtml = (s)=> { if(!s) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); };
 
-/* ask for username once */
+/* ASK display name once */
 if(!username){
-  username = prompt("Pick a display name (no signup):") || ("user"+Math.floor(Math.random()*1000))
-  localStorage.setItem('username', username)
+  username = prompt("Pick a display name (no signup):") || ("user"+Math.floor(Math.random()*1000));
+  localStorage.setItem('username', username);
 }
-usernameLabel.innerText = username
-document.getElementById('nameInput').value = username
-profilePic.src = avatarURL || profilePic.src
+usernameLabel.innerText = username;
+document.getElementById('nameInput').value = username;
+profilePic.src = avatarURL || profilePic.src;
 
-/* ensure General room exists */
+/* ROOMS */
 async function ensureGeneral(){
   try{
-    const { data } = await supabase.from('rooms').select('id').eq('name','General').limit(1)
+    const { data } = await supabase.from('rooms').select('id').eq('name','General').limit(1);
     if(!data || data.length===0){
-      await supabase.from('rooms').insert({ name: 'General' })
+      await supabase.from('rooms').insert({ name: 'General' });
     }
   }catch(e){ logErr(e) }
 }
 
-/* load rooms */
 async function loadRooms(){
   try{
-    const { data, error } = await supabase.from('rooms').select('id,name').order('created_at',{ascending:true})
-    if(error) return logErr(error)
-    roomsEl.innerHTML = ''
+    const { data, error } = await supabase.from('rooms').select('id,name').order('created_at',{ascending:true});
+    if(error) return logErr(error);
+    roomsEl.innerHTML = '';
     if(!data || data.length===0){
-      await supabase.from('rooms').insert({ name: 'General' })
-      return loadRooms()
+      await supabase.from('rooms').insert({ name: 'General' });
+      return loadRooms();
     }
     for(const r of data){
-      const div = document.createElement('div')
-      div.className = 'room'
-      div.dataset.id = r.id
-      div.innerHTML = `<img src="https://i.imgur.com/HeIi0wU.png"><div style="flex:1">${escapeHtml(r.name)}</div>`
-      div.onclick = ()=>selectRoom(r.id, r.name)
-      roomsEl.appendChild(div)
+      const div = document.createElement('div');
+      div.className = 'room';
+      div.dataset.id = r.id;
+      div.innerHTML = `<img src="https://i.imgur.com/HeIi0wU.png"><div style="flex:1">${escapeHtml(r.name)}</div>`;
+      div.onclick = ()=>selectRoom(r.id, r.name);
+      roomsEl.appendChild(div);
     }
-    if(!currentRoom && data.length>0) selectRoom(data[0].id, data[0].name)
+    if(!currentRoom && data.length>0) selectRoom(data[0].id, data[0].name);
   }catch(e){ logErr(e) }
 }
 
-/* select room */
+/* SELECT ROOM & LOAD MESSAGES */
 async function selectRoom(id,name){
-  currentRoom = id
-  roomTitle.innerText = name
-  await loadMessages()
+  currentRoom = id;
+  roomTitle.innerText = name;
+  await loadMessages();
 }
 
-/* load messages for room */
 async function loadMessages(){
-  if(!currentRoom) return
+  if(!currentRoom) return;
   try{
     const { data, error } = await supabase
       .from('messages')
       .select('*')
       .eq('room_id', currentRoom)
-      .order('created_at',{ascending:true})
-    if(error) return logErr(error)
-    messagesEl.innerHTML = ''
-    if(!data) return
-    data.forEach(m=>{
-      insertMessageDOM(m)
-    })
+      .order('created_at',{ascending:true});
+    if(error) return logErr(error);
+    messagesEl.innerHTML = '';
+    if(!data) return;
+    data.forEach(m=>insertMessageDOM(m));
   }catch(e){ logErr(e) }
 }
 
-/* insert message DOM (prevents duplicates) */
+/* INSERT message DOM (no duplicates) */
 function insertMessageDOM(m){
-  if(!m || !m.id) return
-  if(document.querySelector(`[data-id="${m.id}"]`)) return
-  const row = document.createElement('div')
-  row.className = 'msgRow'
-  row.dataset.id = m.id
-  const isMe = (m.username === username)
-  const msgWrap = document.createElement('div')
-  msgWrap.className = 'msg ' + (isMe ? 'me' : 'other')
-  // header & body
-  const avatar = m.avatar_url || 'https://i.imgur.com/HeIi0wU.png'
-  const header = `<div style="font-weight:700">${escapeHtml(m.username)}</div>`
-  const body = m.message ? `<div>${escapeHtml(m.message)}</div>` : ''
-  const imgHtml = m.image_url ? `<div style="margin-top:6px"><img src="${m.image_url}" style="max-width:220px;border-radius:8px"></div>` : ''
-  const audioHtml = m.audio_url ? `<div style="margin-top:6px"><audio controls src="${m.audio_url}"></audio></div>` : ''
-  const meta = `<div class="meta">${new Date(m.created_at).toLocaleString()}${m.edited? ' • edited':''}</div>`
-  msgWrap.innerHTML = header + body + imgHtml + audioHtml + meta
-  // controls
-  const ctr = document.createElement('div'); ctr.className='controls'
-  const replyBtn = document.createElement('button'); replyBtn.textContent='↩'; replyBtn.title='Reply'
-  replyBtn.onclick = ()=>replyToMessage(m)
-  const reactBtn = document.createElement('button'); reactBtn.textContent='😊'; reactBtn.title='React'
-  reactBtn.onclick = ()=>reactToMessage(m)
-  ctr.appendChild(replyBtn); ctr.appendChild(reactBtn)
+  if(!m || !m.id) return;
+  if(document.querySelector(`[data-id="${m.id}"]`)) return;
+  const row = document.createElement('div');
+  row.className = 'msgRow';
+  row.dataset.id = m.id;
+  const isMe = (m.username === username);
+  const msgWrap = document.createElement('div');
+  msgWrap.className = 'msg ' + (isMe ? 'me' : 'other');
+  const avatar = m.avatar_url || 'https://i.imgur.com/HeIi0wU.png';
+  const header = `<div style="font-weight:700">${escapeHtml(m.username)}</div>`;
+  const body = m.message ? `<div>${escapeHtml(m.message)}</div>` : '';
+  const imgHtml = m.image_url ? `<div style="margin-top:6px"><img src="${m.image_url}" style="max-width:220px;border-radius:8px"></div>` : '';
+  const audioHtml = m.audio_url ? `<div style="margin-top:6px"><audio controls src="${m.audio_url}"></audio></div>` : '';
+  const meta = `<div class="meta">${new Date(m.created_at).toLocaleString()}${m.edited? ' • edited':''}</div>`;
+  msgWrap.innerHTML = header + body + imgHtml + audioHtml + meta;
+  const ctr = document.createElement('div'); ctr.className = 'controls';
+  const replyBtn = document.createElement('button'); replyBtn.textContent='↩'; replyBtn.title='Reply';
+  replyBtn.onclick = ()=>replyToMessage(m);
+  const reactBtn = document.createElement('button'); reactBtn.textContent='😊'; reactBtn.title='React';
+  reactBtn.onclick = ()=>reactToMessage(m);
+  ctr.appendChild(replyBtn); ctr.appendChild(reactBtn);
   if(isMe){
-    const editBtn = document.createElement('button'); editBtn.textContent='✏️'; editBtn.title='Edit'
-    const delBtn = document.createElement('button'); delBtn.textContent='🗑'; delBtn.title='Delete'
-    editBtn.onclick = ()=>editMessage(m)
-    delBtn.onclick = ()=>deleteMessage(m)
-    ctr.appendChild(editBtn); ctr.appendChild(delBtn)
+    const editBtn = document.createElement('button'); editBtn.textContent='✏️'; editBtn.title='Edit';
+    const delBtn = document.createElement('button'); delBtn.textContent='🗑'; delBtn.title='Delete';
+    editBtn.onclick = ()=>editMessage(m);
+    delBtn.onclick = ()=>deleteMessage(m);
+    ctr.appendChild(editBtn); ctr.appendChild(delBtn);
   }
-  msgWrap.appendChild(ctr)
-  const avatarEl = document.createElement('img'); avatarEl.src = avatar; avatarEl.style.width='34px'; avatarEl.style.height='34px'; avatarEl.style.borderRadius='50%'
+  msgWrap.appendChild(ctr);
+  const avatarEl = document.createElement('img'); avatarEl.src = avatar; avatarEl.style.width='34px'; avatarEl.style.height='34px'; avatarEl.style.borderRadius='50%';
   if(isMe){
-    row.appendChild(msgWrap)
+    row.appendChild(msgWrap);
   } else {
-    row.appendChild(avatarEl)
-    row.appendChild(msgWrap)
+    row.appendChild(avatarEl);
+    row.appendChild(msgWrap);
   }
-  row.setAttribute('data-id', m.id)
-  messagesEl.appendChild(row)
-  messagesEl.scrollTop = messagesEl.scrollHeight
+  row.setAttribute('data-id', m.id);
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-/* send message (with optional file upload) */
+/* send message (with optional file) */
 async function sendMessage(){
-  const box = document.getElementById('msgBox')
-  const fileInput = document.getElementById('fileInput')
-  const text = box.value.trim()
-  let image_url = null, audio_url = null
+  const box = document.getElementById('msgBox');
+  const fileInput = document.getElementById('fileInput');
+  const text = box.value.trim();
+  let image_url = null, audio_url = null;
 
   if(fileInput.files && fileInput.files.length>0){
-    const file = fileInput.files[0]
-    const bucket = file.type.startsWith('image') ? 'images' : 'voice'
-    const path = `${bucket}/${crypto.randomUUID()}_${file.name}`
+    const file = fileInput.files[0];
+    const bucket = file.type.startsWith('image') ? 'images' : 'voice';
+    const path = `${bucket}/${crypto.randomUUID()}_${file.name}`;
     try{
-      const { error } = await supabase.storage.from(bucket).upload(path, file, {upsert:true})
-      if(error) throw error
-      const pub = supabase.storage.from(bucket).getPublicUrl(path).publicUrl
-      if(bucket==='images') image_url = pub
-      else audio_url = pub
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {upsert:true});
+      if(error) throw error;
+      const pub = supabase.storage.from(bucket).getPublicUrl(path).publicUrl;
+      if(bucket==='images') image_url = pub;
+      else audio_url = pub;
     }catch(e){ logErr(e); toast('Upload failed') }
-    fileInput.value = ''
+    fileInput.value = '';
   }
 
-  if(!text && !image_url && !audio_url) return
-
+  if(!text && !image_url && !audio_url) return;
   try{
-    const payload = {
-      room_id: currentRoom,
-      username,
-      message: text || null,
-      image_url,
-      audio_url,
-      avatar_url: avatarURL || null
-    }
-    const { error } = await supabase.from('messages').insert(payload)
-    if(error) throw error
-    box.value = ''
+    const payload = { room_id: currentRoom, username, message: text || null, image_url, audio_url, avatar_url: avatarURL || null };
+    const { error } = await supabase.from('messages').insert(payload);
+    if(error) throw error;
+    box.value = '';
   }catch(e){ logErr(e); toast('Send failed') }
 }
 
 /* edit/delete */
 async function editMessage(m){
-  const newText = prompt('Edit message', m.message || '')
-  if(newText === null) return
+  const newText = prompt('Edit message', m.message || '');
+  if(newText === null) return;
   try{
-    const { error } = await supabase.from('messages').update({ message: newText, edited: true }).eq('id', m.id)
-    if(error) throw error
+    const { error } = await supabase.from('messages').update({ message: newText, edited: true }).eq('id', m.id);
+    if(error) throw error;
   }catch(e){ logErr(e); toast('Edit failed') }
 }
-
 async function deleteMessage(m){
-  if(!confirm('Delete message?')) return
+  if(!confirm('Delete message?')) return;
   try{
-    const { error } = await supabase.from('messages').delete().eq('id', m.id)
-    if(error) throw error
-    const el = document.querySelector(`[data-id="${m.id}"]`)
-    if(el) el.remove()
+    const { error } = await supabase.from('messages').delete().eq('id', m.id);
+    if(error) throw error;
+    const el = document.querySelector(`[data-id="${m.id}"]`);
+    if(el) el.remove();
   }catch(e){ logErr(e); toast('Delete failed') }
 }
 
 /* reactions & reply */
 async function reactToMessage(m){
-  const emoji = prompt('React with emoji (e.g. 👍, 😂, ❤️)')
-  if(!emoji) return
+  const emoji = prompt('React with emoji (e.g. 👍, 😂, ❤️)');
+  if(!emoji) return;
   try{ await supabase.from('reactions').insert({ message_id: m.id, username, emoji }) } catch(e){ logErr(e) }
 }
 function replyToMessage(m){
-  const box = document.getElementById('msgBox')
-  box.value = `@${m.username} ` + (m.message ? `“${m.message.substring(0,60)}” ` : '')
-  box.focus()
+  const box = document.getElementById('msgBox');
+  box.value = `@${m.username} ` + (m.message ? m.message.slice(0,60) + ' ' : '');
+  box.focus();
 }
 
-/* typing (simple broadcast) */
-const typingChannel = supabase.channel('typing-channel')
+/* typing (broadcast) */
+const typingChannel = supabase.channel('typing-channel');
 typingChannel.on('broadcast', { event: 'user_typing' }, payload=>{
   if(payload.payload.room === currentRoom && payload.payload.username !== username){
-    typingIndicator.innerText = `${payload.payload.username} is typing...`
-    clearTimeout(typingTimeout)
-    typingTimeout = setTimeout(()=> typingIndicator.innerText = '', 1400)
+    typingIndicator.innerText = `${payload.payload.username} is typing...`;
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(()=> typingIndicator.innerText = '', 1400);
   }
-}).subscribe()
-
+});
+typingChannel.subscribe();
 document.getElementById('msgBox').addEventListener('input', ()=> {
-  typingChannel.send({ type: 'broadcast', event: 'user_typing', payload: { username, room: currentRoom } })
-})
+  typingChannel.send({ type: 'broadcast', event: 'user_typing', payload: { username, room: currentRoom } });
+});
 
-/* realtime subscription */
+/* realtime */
 function subscribeRealtime(){
-  const ch = supabase.channel('realtime-messages')
+  const ch = supabase.channel('realtime-messages');
   ch.on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload=>{
-    const row = payload.new
-    if(row.room_id === currentRoom) insertMessageDOM(row)
-  })
+    const row = payload.new;
+    if(row.room_id === currentRoom) insertMessageDOM(row);
+  });
   ch.on('postgres_changes', { event:'UPDATE', schema:'public', table:'messages' }, payload=>{
-    const row = payload.new
-    const el = document.querySelector(`[data-id="${row.id}"]`)
-    if(el) el.remove()
-    if(row.room_id === currentRoom) insertMessageDOM(row)
-  })
+    const row = payload.new;
+    const el = document.querySelector(`[data-id="${row.id}"]`);
+    if(el) el.remove();
+    if(row.room_id === currentRoom) insertMessageDOM(row);
+  });
   ch.on('postgres_changes', { event:'DELETE', schema:'public', table:'messages' }, payload=>{
-    const id = payload.old.id
-    const el = document.querySelector(`[data-id="${id}"]`)
-    if(el) el.remove()
-  })
-  // online_users changes
-  ch.on('postgres_changes', { event:'INSERT', schema:'public', table:'online_users' }, ()=> loadOnlineUsers())
-  ch.on('postgres_changes', { event:'UPDATE', schema:'public', table:'online_users' }, ()=> loadOnlineUsers())
-  ch.subscribe()
+    const id = payload.old.id;
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if(el) el.remove();
+  });
+  ch.on('postgres_changes', { event:'INSERT', schema:'public', table:'online_users' }, ()=> loadOnlineUsers());
+  ch.on('postgres_changes', { event:'UPDATE', schema:'public', table:'online_users' }, ()=> loadOnlineUsers());
+  ch.subscribe();
 }
 
 /* online users */
 async function loadOnlineUsers(){
   try{
-    const { data } = await supabase.from('online_users').select('*').order('last_seen',{ascending:false})
-    onlineList.innerHTML = ''
-    if(!data) return
+    const { data } = await supabase.from('online_users').select('*').order('last_seen',{ascending:false});
+    onlineList.innerHTML = '';
+    if(!data) return;
     data.forEach(u=>{
-      const d = document.createElement('div')
-      d.textContent = `${u.username} • ${new Date(u.last_seen).toLocaleTimeString()}`
-      onlineList.appendChild(d)
-    })
+      const d = document.createElement('div');
+      d.textContent = `${u.username} • ${new Date(u.last_seen).toLocaleTimeString()}`;
+      onlineList.appendChild(d);
+    });
   }catch(e){ logErr(e) }
 }
 async function updateOnline(){
   try{
-    await supabase.from('online_users').upsert({ username, last_seen: new Date().toISOString() })
+    await supabase.from('online_users').upsert({ username, last_seen: new Date().toISOString() });
   }catch(e){ logErr(e) }
-  setTimeout(updateOnline, 10000)
+  setTimeout(updateOnline, 10000);
 }
 
-/* settings: avatar upload */
+/* settings avatar upload */
 document.getElementById('avatarInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0]; if(!file) return
-  const path = `avatars/${username}_${Date.now()}_${file.name}`
+  const file = e.target.files[0]; if(!file) return;
+  const path = `avatars/${username}_${Date.now()}_${file.name}`;
   try{
-    const { error } = await supabase.storage.from('images').upload(path, file, { upsert:true })
-    if(error) throw error
-    avatarURL = supabase.storage.from('images').getPublicUrl(path).publicUrl
-    profilePic.src = avatarURL
-    localStorage.setItem('avatarURL', avatarURL)
-    await supabase.from('users').upsert({ username, avatar_url: avatarURL })
-    toast('Avatar uploaded')
+    const { error } = await supabase.storage.from('images').upload(path, file, { upsert:true });
+    if(error) throw error;
+    avatarURL = supabase.storage.from('images').getPublicUrl(path).publicUrl;
+    profilePic.src = avatarURL;
+    localStorage.setItem('avatarURL', avatarURL);
+    await supabase.from('users').upsert({ username, avatar_url: avatarURL });
+    toast('Avatar uploaded');
   }catch(err){ logErr(err); toast('Avatar upload failed') }
-})
+});
 
-/* themes */
+/* THEMES: expose applyTheme to window for any inline usage (defensive) */
 function applyTheme(name){
   if(name==='light'){ document.documentElement.style.setProperty('--bg','#ece5dd'); document.documentElement.style.setProperty('--sidebar','#111b21'); document.documentElement.style.setProperty('--header','#202c33') }
   else if(name==='dark'){ document.documentElement.style.setProperty('--bg','#07141a'); document.documentElement.style.setProperty('--sidebar','#0b141a'); document.documentElement.style.setProperty('--header','#0d1a20'); document.documentElement.style.setProperty('--msgother','#202c33') }
   else if(name==='blue'){ document.documentElement.style.setProperty('--accent','#3b82f6'); document.documentElement.style.setProperty('--msgme','#dbeafe') }
 }
+window.applyTheme = applyTheme; // make callable from outside (helps inline handlers if any)
 
-/* UI events wiring */
-document.getElementById('newRoomBtn').onclick = async ()=> { const name = prompt('Room name'); if(name) await supabase.from('rooms').insert({name}).then(loadRooms) }
-document.getElementById('joinGeneralBtn').onclick = async ()=> { await ensureGeneral(); await loadRooms() }
+/* wire up settings buttons (use event listeners, not inline) */
+document.getElementById('themeLight').addEventListener('click', ()=>applyTheme('light'));
+document.getElementById('themeDark').addEventListener('click', ()=>applyTheme('dark'));
+document.getElementById('themeBlue').addEventListener('click', ()=>applyTheme('blue'));
+
+/* UI events */
+document.getElementById('newRoomBtn').onclick = async ()=>{ const name = prompt('Room name'); if(name) await supabase.from('rooms').insert({name}).then(loadRooms) }
+document.getElementById('joinGeneralBtn').onclick = async ()=>{ await ensureGeneral(); await loadRooms() }
 document.getElementById('send').onclick = sendMessage
 document.getElementById('attachBtn').onclick = ()=> document.getElementById('fileInput').click()
-document.getElementById('fileInput').addEventListener('change', ()=>{} /* processed in sendMessage */)
 document.getElementById('settingsBtn').addEventListener('click', ()=> { document.getElementById('settings').style.display = 'block' })
 document.getElementById('saveSettings').addEventListener('click', async ()=>{
   const newName = document.getElementById('nameInput').value.trim()
@@ -443,11 +437,8 @@ async function init(){
   subscribeRealtime()
   updateOnline()
   loadOnlineUsers()
-  // initial messages loaded in selectRoom -> loadMessages
 }
-
-/* start app */
-init().catch(logErr)
+init().catch(logErr);
 
 </script>
 </body>
