@@ -1,255 +1,393 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>skoolchat</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SkoolChat</title>
+
 <style>
-body {
-  margin:0;
-  font-family:sans-serif;
-  display:flex;
-  flex-direction:column;
-  height:100vh;
-  background:#ece5dd;
+
+body{
+margin:0;
+font-family:sans-serif;
+display:flex;
+height:100vh;
+background:#ece5dd;
 }
-header{
-  background:#075e54;
-  color:white;
-  display:flex;
-  align-items:center;
-  padding:10px;
-  gap:10px;
-  justify-content:space-between;
+
+/* sidebar */
+
+#sidebar{
+width:280px;
+background:#111b21;
+color:white;
+display:flex;
+flex-direction:column;
 }
-header img{
-  width:36px;
-  height:36px;
-  border-radius:50%;
+
+#profile{
+padding:15px;
+background:#202c33;
+display:flex;
+align-items:center;
+gap:10px;
 }
-#roomName{flex:1;}
-#settingsBtn{
-  cursor:pointer;
-  background:#25d366;
-  border:none;
-  border-radius:50%;
-  width:30px;
-  height:30px;
-  font-weight:bold;
-  color:white;
+
+#rooms{
+flex:1;
+overflow:auto;
 }
-#settingsPanel{
-  display:none;
-  flex-direction:column;
-  padding:10px;
-  background:#f0f0f0;
-  gap:8px;
+
+.room{
+padding:12px;
+cursor:pointer;
+border-bottom:1px solid #2a3942;
 }
-#settingsPanel input{
-  padding:6px;
-  border-radius:6px;
-  border:1px solid #ccc;
+
+.room:hover{
+background:#2a3942;
 }
-#settingsPanel button{
-  padding:6px;
-  border-radius:6px;
-  border:none;
-  background:#25d366;
-  color:white;
-  cursor:pointer;
+
+/* chat area */
+
+#main{
+flex:1;
+display:flex;
+flex-direction:column;
 }
+
+#header{
+background:#202c33;
+color:white;
+padding:12px;
+}
+
 #messages{
-  flex:1;
-  overflow-y:auto;
-  padding:10px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
+flex:1;
+overflow:auto;
+padding:15px;
 }
+
 .msg{
-  max-width:70%;
-  padding:8px 12px;
-  border-radius:10px;
-  display:flex;
-  align-items:flex-start;
-  gap:6px;
-  word-break:break-word;
+max-width:65%;
+padding:8px 12px;
+border-radius:8px;
+margin:6px 0;
 }
-.me{align-self:flex-end;background:#dcf8c6;}
-.other{align-self:flex-start;background:white;}
-.msg img{
-  width:24px;
-  height:24px;
-  border-radius:50%;
+
+.me{
+background:#d9fdd3;
+margin-left:auto;
 }
-.msg-content{
-  display:flex;
-  flex-direction:column;
+
+.other{
+background:white;
 }
-.msg b{font-size:12px;}
-.meta{font-size:10px; opacity:0.6; text-align:right;}
-#inputArea{
-  display:flex;
-  gap:8px;
-  padding:10px;
-  background:#f0f0f0;
+
+#inputBar{
+display:flex;
+padding:10px;
+background:#f0f0f0;
 }
-#msgInput{
-  flex:1;
-  border-radius:20px;
-  border:none;
-  padding:10px;
+
+#msgBox{
+flex:1;
+padding:10px;
+border-radius:20px;
+border:1px solid #ccc;
 }
-#sendBtn{
-  background:#25d366;
-  color:white;
-  border:none;
-  border-radius:50%;
-  width:40px;
-  height:40px;
-  font-size:16px;
-  cursor:pointer;
-  transition:0.2s;
+
+#send{
+margin-left:8px;
+background:#25d366;
+border:none;
+padding:10px 16px;
+border-radius:20px;
+cursor:pointer;
 }
-#sendBtn:active{transform:scale(0.8);}
+
+#send:active{
+transform:scale(.9);
+}
+
+#settings{
+position:absolute;
+top:60px;
+left:20px;
+background:white;
+padding:15px;
+border-radius:10px;
+display:none;
+box-shadow:0 5px 20px rgba(0,0,0,.2);
+}
+
 </style>
 </head>
+
 <body>
 
-<header>
-<img id="avatar">
-<div id="roomName"></div>
-<button id="settingsBtn">⚙️</button>
-</header>
+<div id="sidebar">
 
-<div id="settingsPanel">
-<input id="usernameInput" placeholder="Username">
-<input id="roomInput" placeholder="Room">
-<input id="avatarInput" placeholder="Profile picture URL">
-<input id="bgInput" placeholder="Background color (#hex or name)">
-<button id="saveSettingsBtn">Save Settings</button>
+<div id="profile">
+<span id="usernameLabel">User</span>
+<button onclick="toggleSettings()">⚙️</button>
 </div>
+
+<div id="rooms"></div>
+
+<button onclick="createRoom()">+ New Room</button>
+
+</div>
+
+<div id="main">
+
+<div id="header">Chat</div>
 
 <div id="messages"></div>
 
-<div id="inputArea">
-<input id="msgInput" placeholder="Message">
-<button id="sendBtn">➤</button>
+<div id="inputBar">
+<input id="msgBox" placeholder="Message">
+<button id="send">Send</button>
 </div>
 
+</div>
+
+
+<div id="settings">
+
+<h3>Settings</h3>
+
+<input id="nameInput" placeholder="username">
+<br><br>
+
+<button onclick="saveProfile()">Save</button>
+
+<button onclick="logout()">Logout</button>
+
+</div>
+
+
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-// --- Supabase client ---
-const supabaseUrl = 'https://wriwchqhwjvujmkpyzai.supabase.co'
-const supabaseKey = 'sb_publishable_t5CJXeZxFY1gtCPu_PH7nQ_9lnlg9AT'
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
 
-// --- Declare global variables ---
-let username, room, avatar, bg
 
-// --- Load settings ---
-function loadSettings(){
-  username = localStorage.getItem("username") || prompt("Enter your username")
-  room = localStorage.getItem("room") || prompt("Enter room name")
-  avatar = localStorage.getItem("avatar") || prompt("Profile picture URL (optional)")
-  bg = localStorage.getItem("bg") || "#ece5dd"
+const supabase = createClient(
+"https://gkkacqhittcxuogqgjge.supabase.co",
+"sb_publishable_d4EZ5SBYs4EKyZ0_5Tlj0g_JSb0l-yI"
+)
 
-  localStorage.setItem("username",username)
-  localStorage.setItem("room",room)
-  localStorage.setItem("avatar",avatar)
-  localStorage.setItem("bg",bg)
 
-  document.getElementById("avatar").src = avatar || "https://i.imgur.com/HeIi0wU.png"
-  document.getElementById("roomName").innerText = room
-  document.body.style.background = bg
+let user=null
+let currentRoom=null
 
-  document.getElementById("usernameInput").value = username
-  document.getElementById("roomInput").value = room
-  document.getElementById("avatarInput").value = avatar
-  document.getElementById("bgInput").value = bg
-}
-loadSettings()
 
-// --- Settings toggle ---
-const settingsBtn = document.getElementById("settingsBtn")
-const settingsPanel = document.getElementById("settingsPanel")
-settingsBtn.onclick = () => settingsPanel.style.display = settingsPanel.style.display==="flex"?"none":"flex"
+const messagesDiv=document.getElementById("messages")
+const roomsDiv=document.getElementById("rooms")
 
-// --- Save settings ---
-document.getElementById("saveSettingsBtn").onclick = ()=>{
-  username = document.getElementById("usernameInput").value.trim() || username
-  room = document.getElementById("roomInput").value.trim() || room
-  avatar = document.getElementById("avatarInput").value.trim() || avatar
-  bg = document.getElementById("bgInput").value.trim() || bg
 
-  localStorage.setItem("username",username)
-  localStorage.setItem("room",room)
-  localStorage.setItem("avatar",avatar)
-  localStorage.setItem("bg",bg)
-
-  document.getElementById("avatar").src = avatar || "https://i.imgur.com/HeIi0wU.png"
-  document.getElementById("roomName").innerText = room
-  document.body.style.background = bg
-
-  messagesDiv.innerHTML=""
-  loadMessages()
+function toggleSettings(){
+const s=document.getElementById("settings")
+s.style.display=s.style.display==="block"?"none":"block"
 }
 
-// --- DOM references ---
-const messagesDiv = document.getElementById("messages")
 
-function addMessage(msg){
-  const div = document.createElement("div")
-  div.className = "msg "+(msg.username===username?"me":"other")
-  div.innerHTML = `<img src="${msg.avatar_url||'https://i.imgur.com/HeIi0wU.png'}">
-                   <div class="msg-content">
-                     <b>${msg.username}</b>
-                     <div>${msg.message}</div>
-                     <div class="meta">${new Date(msg.created_at).toLocaleTimeString()}</div>
-                   </div>`
-  messagesDiv.appendChild(div)
-  messagesDiv.scrollTop = messagesDiv.scrollHeight
+async function login(){
+
+const email=prompt("enter email")
+
+await supabase.auth.signInWithOtp({email})
+
+alert("check email then reload")
+
 }
 
-// --- Load messages from Supabase ---
-async function loadMessages(){
-  try{
-    const {data,error} = await supabase.from("messages")
-      .select("*")
-      .eq("room",room)
-      .order("created_at",{ascending:true})
-    if(error) throw error
-    if(data) messagesDiv.innerHTML="", data.forEach(addMessage)
-  }catch(err){console.error("Load failed:",err)}
+
+async function getUser(){
+
+const {data}=await supabase.auth.getUser()
+
+if(!data.user){
+
+await login()
+
+return
+
 }
 
-// --- Send message ---
-async function sendMessage(){
-  const text = document.getElementById("msgInput").value.trim()
-  if(!text) return
-  document.getElementById("msgInput").value=""
-  try{
-    const {error} = await supabase.from("messages").insert({
-      username, room, message:text, avatar_url:avatar
-    })
-    if(error) throw error
-  }catch(err){console.error("Send failed:",err)}
+user=data.user
+
 }
 
-// --- Events ---
-document.getElementById("sendBtn").onclick = sendMessage
-document.getElementById("msgInput").addEventListener("keypress", e=>{
-  if(e.key==="Enter") sendMessage()
+
+async function loadRooms(){
+
+const {data}=await supabase
+.from("rooms")
+.select("*")
+
+roomsDiv.innerHTML=""
+
+data.forEach(r=>{
+
+const div=document.createElement("div")
+
+div.className="room"
+
+div.innerText=r.name
+
+div.onclick=()=>openRoom(r.id,r.name)
+
+roomsDiv.appendChild(div)
+
 })
 
-// --- Realtime subscription ---
+}
+
+
+async function createRoom(){
+
+const name=prompt("room name")
+
+if(!name)return
+
+await supabase
+.from("rooms")
+.insert({name})
+
+loadRooms()
+
+}
+
+
+async function openRoom(id,name){
+
+currentRoom=id
+
+document.getElementById("header").innerText=name
+
 loadMessages()
-supabase.channel("realtime")
-  .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},payload=>{
-    if(payload.new.room===room) addMessage(payload.new)
-  })
-  .subscribe()
+
+}
+
+
+function addMessage(m){
+
+const div=document.createElement("div")
+
+div.className="msg "+(m.sender_id===user.id?"me":"other")
+
+div.innerText=m.content
+
+messagesDiv.appendChild(div)
+
+messagesDiv.scrollTop=messagesDiv.scrollHeight
+
+}
+
+
+async function loadMessages(){
+
+if(!currentRoom)return
+
+const {data}=await supabase
+.from("messages")
+.select("*")
+.eq("room_id",currentRoom)
+.order("created_at",{ascending:true})
+
+messagesDiv.innerHTML=""
+
+data.forEach(addMessage)
+
+}
+
+
+async function sendMessage(){
+
+const box=document.getElementById("msgBox")
+
+const text=box.value.trim()
+
+if(!text)return
+
+await supabase
+.from("messages")
+.insert({
+room_id:currentRoom,
+sender_id:user.id,
+content:text
+})
+
+box.value=""
+
+}
+
+
+async function subscribe(){
+
+supabase
+.channel("realtime")
+
+.on(
+"postgres_changes",
+{
+event:"INSERT",
+schema:"public",
+table:"messages"
+},
+payload=>{
+
+if(payload.new.room_id===currentRoom)
+addMessage(payload.new)
+
+})
+
+.subscribe()
+
+}
+
+
+async function saveProfile(){
+
+const name=document.getElementById("nameInput").value
+
+await supabase
+.from("users")
+.insert({
+auth_id:user.id,
+username:name
+})
+
+document.getElementById("usernameLabel").innerText=name
+
+}
+
+
+async function logout(){
+
+await supabase.auth.signOut()
+
+location.reload()
+
+}
+
+
+document.getElementById("send").onclick=sendMessage
+
+
+async function start(){
+
+await getUser()
+
+loadRooms()
+
+subscribe()
+
+}
+
+start()
 
 </script>
+
 </body>
 </html>
